@@ -1,140 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Terry's Table</title>
+<meta name="theme-color" content="#12060a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Oswald:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800&family=Barlow:wght@400;500;600&display=swap">
 <style>
-  /* Layout: one column. Header, scrolling tab bar, then a panel per tab. Turf-green accent on cool neutrals. Mobile view swaps tables for cards. */
+  /* Broadcast package: garnet and gold on near-black. Slanted shapes (skew and clip-path) are the signature.
+     Structure: splash, header, ticker, tabs, one panel per tab. Mobile view swaps the table for cards. */
   :root {
-    --bg: #f4f2ec; --surface: #ffffff; --ink: #14213d; --muted: #5d6579; --line: #dcd9cf;
-    --accent: #1f3a68; --accent-ink: #ffffff; --gold: #d9a21b; --gold-ink: #14213d; --hi: #e6ecf7; --warn: #8a5200; --warn-bg: #fbefd5; --neg: #b3402e;
-    --f-display: "Oswald", "Arial Narrow", Impact, sans-serif;
-    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --f-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0b1220; --surface: #131c30; --ink: #eaeef7; --muted: #98a3bb; --line: #25314d;
-      --accent: #f2b632; --accent-ink: #0b1220; --gold: #f2b632; --gold-ink: #0b1220; --hi: #1c2a4a; --warn: #f0b64d; --warn-bg: #3a2d12; --neg: #ef8f7c;
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #0b1220; --surface: #131c30; --ink: #eaeef7; --muted: #98a3bb; --line: #25314d;
-    --accent: #f2b632; --accent-ink: #0b1220; --gold: #f2b632; --gold-ink: #0b1220; --hi: #1c2a4a; --warn: #f0b64d; --warn-bg: #3a2d12; --neg: #ef8f7c;
+    --bg: #12060a; --panel: #231019; --panel2: #311723; --line: #4a2432;
+    --garnet: #9b1c3f; --garnet-hi: #cf2c5b; --garnet-deep: #5a0f26;
+    --gold: #f2b632; --gold-soft: #f7d98a; --on-gold: #2a0a14;
+    --ink: #fbf4e6; --muted: #c2a6af; --pos: #7fe3a9; --neg: #ff8f8f; --warn-bg: #3a2410;
+    --f-disp: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
     color-scheme: dark;
   }
-  body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 20px 48px; }
-  .page { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; padding: 20px 16px 56px; min-height: 100vh; overflow-x: hidden; }
+  /* Field texture: faint yard lines and a garnet floodlight glow. */
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(900px 420px at 15% -5%, rgba(155, 28, 63, .55), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(242, 182, 50, .05) 0 2px, transparent 2px 88px);
+    -webkit-mask-image: linear-gradient(#000 40%, transparent 95%); mask-image: linear-gradient(#000 40%, transparent 95%); }
+  .page { max-width: 1100px; margin-inline: auto; display: flex; flex-direction: column; gap: 18px; }
   .page.mv { max-width: 440px; }
-  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
-  h1 { color: var(--accent); font-family: var(--f-display); font-weight: 600; font-size: 2.1rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; line-height: 1.05; text-wrap: balance; }
-  .sub { color: var(--muted); margin: 4px 0 0; max-width: 60ch; }
-  .hr { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-  #status { font-family: var(--f-data); font-size: 0.8rem; color: var(--muted); }
-  nav { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+
+  /* Splash */
+  #splash { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow: hidden; cursor: pointer;
+    background: linear-gradient(120deg, var(--garnet-deep), #2a0713 60%); transition: clip-path .7s var(--ease); clip-path: inset(0 0 0 0); }
+  #splash.out { clip-path: inset(0 0 100% 0); }
+  #splash .slab { position: absolute; inset: -10% -20%; background: linear-gradient(100deg, transparent 40%, var(--gold) 40% 52%, var(--garnet-hi) 52% 58%, transparent 58%); transform: translateX(-120%); animation: sweep 1.1s .15s var(--ease) forwards; }
+  #splash .box { position: relative; text-align: center; padding: 0 16px; }
+  #splash .ball { width: 92px; height: auto; display: block; margin: 0 auto 6px; animation: spin 1.4s .2s var(--ease) both; }
+  #splash .big { font-family: var(--f-disp); font-weight: 800; font-style: italic; font-size: clamp(3rem, 14vw, 7rem); line-height: .9; text-shadow: 5px 5px 0 var(--garnet); animation: slam .55s .55s var(--ease) both; }
+  #splash .small { font-family: var(--f-disp); font-weight: 600; font-style: italic; font-size: 1.3rem; color: var(--gold); margin-top: 12px; animation: rise .5s 1s var(--ease) both; }
+  @keyframes sweep { to { transform: translateX(120%); } }
+  @keyframes spin { from { transform: translateX(-60vw) rotate(-540deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes slam { from { transform: scale(1.7); opacity: 0; filter: blur(8px); } to { transform: none; opacity: 1; filter: none; } }
+  @keyframes rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Header */
+  .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; }
+  .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  .brand .ball { width: 74px; flex: none; filter: drop-shadow(0 0 14px rgba(242, 182, 50, .35)); }
+  h1 { font-family: var(--f-disp); font-weight: 800; font-style: italic; font-size: clamp(2.5rem, 8vw, 4.4rem); line-height: .88; margin: 0; letter-spacing: .01em; text-shadow: 3px 3px 0 var(--garnet); position: relative; padding-bottom: 12px; text-wrap: balance; }
+  h1::after { content: ""; position: absolute; left: 4px; bottom: 0; width: 46%; height: 6px; background: var(--gold); transform: skewX(-30deg); }
+  .sub { color: var(--muted); margin: 8px 0 0; max-width: 56ch; }
+  .hr { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font: 600 .95rem var(--f-disp); letter-spacing: .04em; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); padding: 4px 12px; border-radius: 999px; color: var(--gold-soft); }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse 1.8s ease-in-out infinite; }
+  .pill.err { color: var(--neg); } .pill.err .dot { background: var(--neg); animation: none; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(242, 182, 50, .7); } 60% { box-shadow: 0 0 0 7px rgba(242, 182, 50, 0); } }
+  .btn { font: 600 1rem var(--f-disp); letter-spacing: .03em; color: var(--ink); background: rgba(0, 0, 0, .35); border: 1px solid var(--line); padding: 7px 14px; cursor: pointer; transition: background .2s, border-color .2s, transform .15s; }
+  .btn:hover:not(:disabled) { background: var(--panel2); border-color: var(--gold); }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn:disabled { opacity: .7; cursor: default; }
+  .btn[aria-pressed="true"] { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
+  button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Ticker */
+  .ticker { display: flex; align-items: stretch; background: var(--garnet-deep); border: 1px solid var(--line); height: 40px; overflow: hidden; }
+  .tk-tag { flex: none; display: flex; align-items: center; padding: 0 22px 0 14px; background: var(--gold); color: var(--on-gold); font: 800 1.05rem var(--f-disp); font-style: italic; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); position: relative; z-index: 1; }
+  .tk-win { flex: 1; overflow: hidden; position: relative; -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  .tk-track { display: inline-flex; align-items: center; height: 100%; white-space: nowrap; animation: tick 60s linear infinite; will-change: transform; }
+  .ticker:hover .tk-track { animation-play-state: paused; }
+  .tk-item { font: 600 1.1rem var(--f-disp); letter-spacing: .02em; display: inline-flex; align-items: center; }
+  .tk-item b { color: var(--gold); font-weight: 700; margin-inline: 6px; }
+  .tk-item::after { content: ""; width: 8px; height: 8px; margin: 0 24px; background: var(--garnet-hi); transform: rotate(45deg); }
+  @keyframes tick { to { transform: translateX(-50%); } }
+
+  /* Tabs */
+  nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 6px 6px; }
   nav::-webkit-scrollbar { display: none; }
-  nav button { font: inherit; font-weight: 500; white-space: nowrap; background: none; color: var(--muted); border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; }
-  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--gold); }
-  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .note { background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 6px; font-size: 0.9rem; margin-top: 12px; }
+  nav button { position: relative; isolation: isolate; font: 700 1.25rem var(--f-disp); font-style: italic; letter-spacing: .02em; white-space: nowrap; background: none; color: var(--muted); border: 0; padding: 8px 22px; cursor: pointer; transition: color .2s; }
+  nav button::before { content: ""; position: absolute; inset: 0; z-index: -1; transform: skewX(-14deg); background: transparent; border: 1px solid var(--line); transition: background .25s, border-color .25s; }
+  nav button:hover::before { background: var(--panel2); border-color: var(--gold); }
+  nav button[aria-selected="true"] { color: var(--on-gold); }
+  nav button[aria-selected="true"]::before { background: var(--gold); border-color: var(--gold); }
+
+  .note { background: var(--warn-bg); color: var(--gold-soft); border-left: 5px solid var(--gold); padding: 10px 14px; font-size: .95rem; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
-  .meta { color: var(--muted); font-size: 0.9rem; min-width: 0; }
-  .cap { color: var(--muted); font-size: 0.88rem; margin: 8px 0 0; max-width: 70ch; }
-  .btn { font: inherit; font-weight: 500; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
-  .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin-top: 12px; }
+  .meta { color: var(--muted); font-size: .95rem; min-width: 0; }
+  .cap { color: var(--muted); font-size: .95rem; margin: 8px 0 0; max-width: 70ch; }
+  .ph { font: 800 1.5rem var(--f-disp); font-style: italic; margin: 0 0 10px; display: flex; align-items: center; gap: 12px; }
+  .ph::before { content: ""; width: 26px; height: 14px; background: var(--gold); transform: skewX(-30deg); flex: none; }
+
+  /* Booting state (free hosting wakes slowly on the first visit) */
+  #boot { display: none; padding: 48px 12px; text-align: center; }
+  #boot .ball { width: 64px; margin: 0 auto 14px; display: block; animation: bob 1.1s ease-in-out infinite; }
+  #boot p { margin: 0; font: 700 1.5rem var(--f-disp); font-style: italic; }
+  #boot small { color: var(--muted); display: block; margin-top: 6px; font-size: .95rem; }
+  @keyframes bob { 50% { transform: translateY(-14px) rotate(14deg); } }
+  .booting #boot { display: block; }
+  .booting main, .booting #ticker, .booting nav { display: none; }
+
+  /* Lower third: weekly top scorer */
+  .l3 { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; padding: 16px 44px 16px 26px; margin-top: 4px;
+    background: linear-gradient(100deg, var(--garnet) 0, var(--garnet-deep) 75%); border-left: 9px solid var(--gold); overflow: hidden;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 0 100%); }
+  .l3::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .22), transparent); transform: skewX(-20deg); pointer-events: none; }
+  .l3.play::after { animation: shine 1.1s .1s var(--ease); }
+  .l3.play .l3-team { animation: rise .5s var(--ease) both; }
+  @keyframes shine { to { left: 130%; } }
+  .l3-tag { grid-column: 1 / -1; justify-self: start; background: var(--gold); color: var(--on-gold); font: 800 .95rem var(--f-disp); font-style: italic; padding: 1px 16px 1px 10px; clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+  .l3-team { font: 800 clamp(1.7rem, 5vw, 2.7rem) var(--f-disp); font-style: italic; line-height: 1; overflow-wrap: anywhere; }
+  .l3-sub { color: var(--gold-soft); font-size: .95rem; margin-top: 4px; }
+  .l3-score { font: 800 clamp(2.3rem, 7vw, 3.8rem) var(--f-disp); font-style: italic; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 22px rgba(242, 182, 50, .45); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .l3 .chips { grid-column: 1 / -1; margin-top: 4px; }
+  .chip { font: 600 1rem var(--f-disp); color: var(--ink); background: rgba(0, 0, 0, .3); border: 1px solid rgba(255, 255, 255, .18); padding: 3px 12px; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+  .chip:hover { border-color: var(--gold); }
+  .chip[aria-pressed="true"] { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
+
+  /* Standings table */
+  .scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-top: 5px solid var(--gold); margin-top: 12px; }
   table { border-collapse: separate; border-spacing: 0; width: 100%; font-variant-numeric: tabular-nums; }
-  th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
-  th { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); border-bottom: 2px solid var(--accent); }
-  td { font-family: var(--f-data); font-size: 0.92rem; }
+  th, td { padding: 10px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { font: 600 .98rem var(--f-disp); letter-spacing: .06em; color: var(--gold-soft); background: var(--garnet-deep); }
+  td { font-size: 1rem; font-weight: 500; background: var(--panel); transition: background .2s; }
   tr:last-child td { border-bottom: 0; }
+  tr[data-i]:hover td { background: var(--panel2); }
   th.l, td.l { text-align: left; }
-  td.team { font-family: var(--f-body); font-weight: 500; }
-  td.lp { font-weight: 600; color: var(--accent); font-size: 1.1rem; }
-  td.hi { background: var(--hi); }
-  td.topc { font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
-  td.pos { color: var(--accent); font-weight: 500; }
-  td.neg { color: var(--neg); font-weight: 500; }
-  .c1, .c2, .c0 { position: sticky; background: var(--surface); z-index: 1; }
-  .c1 { left: 0; width: 3.4rem; min-width: 3.4rem; text-align: center; }
-  .c2 { left: 3.4rem; box-shadow: 1px 0 0 var(--line); }
+  td.team { font: 700 1.3rem var(--f-disp); }
+  td.lp { font: 800 1.7rem var(--f-disp); font-style: italic; color: var(--gold); }
+  td.pf { font: 600 1.15rem var(--f-disp); }
+  td.hi { background: rgba(242, 182, 50, .13); }
+  td.topc { font-weight: 700; color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+  td.pos { color: var(--pos); font-weight: 600; } td.neg { color: var(--neg); font-weight: 600; }
+  .c1, .c2, .c0 { position: sticky; z-index: 1; }
+  .c1 { left: 0; width: 4.6rem; min-width: 4.6rem; text-align: center; }
+  .c2 { left: 4.6rem; box-shadow: 1px 0 0 var(--line); }
   .c0 { left: 0; box-shadow: 1px 0 0 var(--line); }
-  .bye { font-family: var(--f-data); font-size: 0.68rem; margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: var(--gold); color: var(--gold-ink); vertical-align: 1px; }
-  tr.cut td { border-bottom: 2px solid var(--gold); }
+  th.c1, th.c2, th.c0 { background: var(--garnet-deep); }
+  .rk { display: block; font: 800 1.9rem var(--f-disp); font-style: italic; line-height: 1; }
+  .mvt { display: block; font: 700 .8rem var(--f-disp); line-height: 1.2; margin-top: 2px; color: var(--muted); }
+  .mvt.up { color: var(--pos); } .mvt.dn { color: var(--neg); }
+  tr.s-bye td.c1 { box-shadow: inset 6px 0 0 var(--gold); }
+  tr.s-in td.c1 { box-shadow: inset 6px 0 0 var(--garnet-hi); }
+  tr.out td.team { color: var(--muted); }
+  tr.cut td { border-bottom: 3px solid var(--gold); animation: cutglow 2.6s ease-in-out infinite; }
+  @keyframes cutglow { 50% { box-shadow: 0 8px 14px -8px rgba(242, 182, 50, .85); } }
+  .bye { display: inline-block; margin-left: 10px; padding: 1px 12px 1px 9px; background: var(--gold); color: var(--on-gold); font: 800 .85rem var(--f-disp); font-style: italic; clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%); vertical-align: 4px; }
   .wk { display: none; }
   table.show .wk { display: table-cell; }
-  .ph { font-family: var(--f-display); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; }
-  .weeks { display: flex; flex-wrap: wrap; gap: 6px; }
-  .prizeitem { display: flex; align-items: baseline; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; min-width: 0; }
-  .pw { font-family: var(--f-data); font-size: 0.8rem; color: var(--muted); }
-  .pn { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
-  .ps { font-family: var(--f-data); color: var(--accent); margin-left: auto; padding-left: 8px; }
-  .chip { font-family: var(--f-data); font-size: 0.85rem; min-width: 3.2rem; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
-  .chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .chip.done { background: var(--hi); }
-  .matchups { display: flex; flex-direction: column; gap: 10px; }
-  .m { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem 5.5rem minmax(0, 1fr); gap: 8px; align-items: center; }
-  select, input[type="text"] { font: inherit; width: 100%; min-width: 0; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
-  input.score { font-family: var(--f-data); text-align: right; }
-  .teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 10px; }
-  label.tl { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
-  .pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .pick select { width: auto; min-width: 12rem; max-width: 100%; }
-  .chartbox { margin-top: 18px; max-width: 640px; }
-  .chartbox svg { width: 100%; height: auto; display: block; }
-  .ax { fill: var(--muted); font-family: var(--f-data); font-size: 12px; }
-  .vl { fill: var(--ink); font-family: var(--f-data); font-size: 12px; font-weight: 500; }
-  .grid { stroke: var(--line); stroke-width: 1; }
-  .s-sel { stroke: var(--accent); stroke-width: 2.5; fill: none; stroke-linejoin: round; }
-  .s-oth { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: 0.4; }
-  .s-avg { stroke: var(--warn); stroke-width: 2; fill: none; stroke-dasharray: 6 4; }
-  .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
-  .legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
-  .legend i.avg { border-top: 2px dashed var(--warn); }
-  .legend i.oth { border-top: 2px solid var(--muted); opacity: 0.5; }
-  #cards { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
-  .card.cut { border-bottom: 3px solid var(--gold); }
-  .card summary { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; cursor: pointer; list-style: none; }
-  .card summary::-webkit-details-marker { display: none; }
-  .cr { font-family: var(--f-display); font-size: 1.5rem; text-align: center; color: var(--muted); }
-  .cn { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-  .cs { display: block; font-family: var(--f-data); font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-top: 2px; }
-  .cl { font-family: var(--f-data); font-size: 1.5rem; color: var(--accent); text-align: right; line-height: 1; }
-  .cl small { display: block; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
-  .cb { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 4px; font-family: var(--f-data); font-size: 0.85rem; }
-  .cb div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 4px; }
-  .cb .ab { color: var(--accent); }
-  .mv .std { display: none; }
-  .mv #cards { display: flex; }
-  .mv #toggle { display: none; }
-  .mv .teams-grid { grid-template-columns: 1fr; }
-  @media (max-width: 560px) {
-    .m { grid-template-columns: minmax(0, 1fr) 5rem; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-    .m .ta, .m .sa { grid-row: 1; }
-    .m .tb, .m .sb { grid-row: 2; }
-    .m .ta, .m .tb { grid-column: 1; }
-    .m .sa, .m .sb { grid-column: 2; }
-    .hr { align-items: flex-start; }
-  }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-</style>
 
-<div class="page" id="page">
-  <header>
-    <div>
-      <h1>Terry's Table</h1>
-      <p class="sub">Dean League standings. Each week is worth 3 points: 2 for beating your opponent, 1 for scoring above the league average.</p>
+  /* Mobile cards */
+  #cards { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--line); }
+  .card.s-bye { border-left-color: var(--gold); } .card.s-in { border-left-color: var(--garnet-hi); }
+  .card.cut { border-bottom: 3px solid var(--gold); }
+  .card summary { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; cursor: pointer; list-style: none; }
+  .card summary::-webkit-details-marker { display: none; }
+  .cr { text-align: center; }
+  .cn { font: 700 1.3rem var(--f-disp); min-width: 0; overflow-wrap: anywhere; line-height: 1.1; }
+  .cs { display: block; font: 500 .9rem var(--f-body); color: var(--muted); margin-top: 3px; }
+  .cl { font: 800 1.9rem var(--f-disp); font-style: italic; color: var(--gold); text-align: right; line-height: 1; }
+  .cl small { display: block; font: 600 .75rem var(--f-disp); color: var(--muted); letter-spacing: .06em; margin-top: 3px; font-style: normal; }
+  .cb { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 4px; font-size: .95rem; }
+  .cb div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 5px; }
+  .cb .ab { color: var(--gold); }
+  .mv .std { display: none; } .mv #cards { display: flex; } .mv #toggle { display: none; }
+
+  /* Playoff picture */
+  .tier { margin-top: 20px; }
+  .tier-h { font: 700 1.15rem var(--f-disp); font-style: italic; color: var(--gold-soft); margin: 0 0 8px; }
+  .plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; }
+  .plate { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 22px 12px 14px; background: var(--panel); border: 1px solid var(--line);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); animation: bugIn .55s var(--ease) both; animation-delay: var(--d, 0s); }
+  .plate .sd { font: 800 2.6rem var(--f-disp); font-style: italic; line-height: 1; min-width: 1.3em; text-align: center; }
+  .plate .pn { font: 700 1.3rem var(--f-disp); line-height: 1.1; overflow-wrap: break-word; word-break: normal; }
+  .plate .pg { font-size: .88rem; color: var(--muted); margin-top: 2px; }
+  .plate .pl { font: 800 1.6rem var(--f-disp); font-style: italic; text-align: right; line-height: 1; }
+  .plate .pl small { display: block; font: 600 .75rem var(--f-disp); font-style: normal; color: var(--muted); letter-spacing: .06em; margin-top: 3px; }
+  .plate.p-bye { background: linear-gradient(100deg, rgba(242, 182, 50, .28), var(--panel) 70%); border-color: var(--gold); box-shadow: inset 6px 0 0 var(--gold); }
+  .plate.p-bye .sd, .plate.p-bye .pl { color: var(--gold); }
+  .plate.p-in { box-shadow: inset 6px 0 0 var(--garnet-hi); } .plate.p-in .sd { color: var(--garnet-hi); }
+  .plate.p-bub { border-style: dashed; } .plate.p-bub .sd { color: var(--muted); }
+  .plate.p-out { opacity: .75; } .plate.p-out .sd { color: var(--muted); font-size: 2rem; }
+  .cutline { display: flex; align-items: center; gap: 12px; margin-top: 22px; font: 700 1.05rem var(--f-disp); font-style: italic; color: var(--gold); }
+  .cutline::before, .cutline::after { content: ""; flex: 1; height: 3px; background: repeating-linear-gradient(90deg, var(--gold) 0 14px, transparent 14px 22px); animation: marchline 1.4s linear infinite; background-size: 22px 3px; }
+  @keyframes marchline { to { background-position: 22px 0; } }
+
+  /* Scorebugs */
+  .bugs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+  .bug { background: var(--panel); border: 1px solid var(--line); animation: bugIn .55s var(--ease) both; animation-delay: var(--d, 0s); }
+  @keyframes bugIn { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+  .bug-r { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 14px 10px 18px; color: var(--muted); }
+  .bug-r + .bug-r { border-top: 1px solid var(--line); }
+  .bug-r .bn { font: 700 1.3rem var(--f-disp); line-height: 1.1; overflow-wrap: anywhere; }
+  .bug-r .bs { font: 700 1.7rem var(--f-disp); font-variant-numeric: tabular-nums; }
+  .bug-r.w { color: var(--ink); background: linear-gradient(90deg, rgba(242, 182, 50, .2), transparent 80%); }
+  .bug-r.w::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; background: var(--gold); }
+  .bug-r.w .bs { color: var(--gold); }
+  .bug-f { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 6px 14px 6px 18px; background: var(--garnet-deep); font: 600 .95rem var(--f-disp); color: var(--gold-soft); letter-spacing: .03em; }
+
+  /* Luck, scoring, trends */
+  .pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  select { font: 600 1.05rem var(--f-body); background: var(--panel); color: var(--ink); border: 1px solid var(--line); padding: 8px 12px; min-width: 12rem; max-width: 100%; }
+  .chartbox { margin-top: 20px; max-width: 680px; }
+  .chartbox svg { width: 100%; height: auto; display: block; }
+  .ax { fill: var(--muted); font: 500 12px var(--f-body); }
+  .vl { fill: var(--ink); font: 700 13px var(--f-body); }
+  .grid { stroke: var(--line); stroke-width: 1; }
+  .s-sel { stroke: var(--gold); stroke-width: 3.2; fill: none; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(242, 182, 50, .6)); }
+  .s-oth { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .4; }
+  .s-avg { stroke: var(--garnet-hi); stroke-width: 2.4; fill: none; stroke-dasharray: 7 5; }
+  .dot { fill: var(--gold); stroke: var(--bg); stroke-width: 2; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: .9rem; margin-top: 6px; }
+  .legend i { display: inline-block; width: 20px; height: 0; border-top: 3px solid var(--gold); vertical-align: middle; margin-right: 6px; }
+  .legend i.avg { border-top: 3px dashed var(--garnet-hi); }
+  .legend i.oth { border-top: 2px solid var(--muted); opacity: .6; }
+  .weeks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .avgitem { display: flex; align-items: baseline; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--garnet-hi); padding: 6px 14px; }
+  .avgitem .pw { font: 600 1rem var(--f-disp); color: var(--muted); }
+  .avgitem .ps { font: 700 1.3rem var(--f-disp); color: var(--gold); }
+
+  .matchups { display: flex; flex-direction: column; gap: 8px; }
+  .prizeitem { display: flex; align-items: baseline; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--garnet-hi); padding: 8px 14px; min-width: 0; }
+  .prizeitem .pw { font: 600 1rem var(--f-disp); color: var(--muted); }
+  .prizeitem .pn { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+  .prizeitem .ps { font: 700 1.2rem var(--f-disp); color: var(--gold); margin-left: auto; padding-left: 8px; text-align: right; }
+
+  @media (max-width: 560px) {
+    .hr { align-items: flex-start; }
+    .brand .ball { width: 52px; }
+    .l3 { padding: 14px 34px 14px 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    #splash { display: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="fb" viewBox="0 0 80 50">
+    <g transform="rotate(-18 40 25)">
+      <ellipse cx="40" cy="25" rx="36" ry="19" fill="#9b1c3f" stroke="#f2b632" stroke-width="2.5"/>
+      <path d="M13 11 Q19 25 13 39 M67 11 Q61 25 67 39" fill="none" stroke="#f7d98a" stroke-width="2.5"/>
+      <path d="M26 25 H54" stroke="#fbf4e6" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M31 19.5 V30.5 M36.5 19.5 V30.5 M42 19.5 V30.5 M47.5 19.5 V30.5" stroke="#fbf4e6" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </symbol>
+</svg>
+
+<div id="splash" role="presentation">
+  <div class="slab"></div>
+  <div class="box">
+    <svg class="ball" viewBox="0 0 80 50"><use href="#fb"/></svg>
+    <div class="big">Terry's Table</div>
+    <div class="small">The Dean Association</div>
+  </div>
+</div>
+
+<div class="page booting" id="page">
+  <header class="top">
+    <div class="brand">
+      <svg class="ball" viewBox="0 0 80 50" aria-hidden="true"><use href="#fb"/></svg>
+      <div>
+        <h1>Terry's Table</h1>
+        <p class="sub">Dean League standings. Each week is worth 3 points: 2 for beating your opponent, 1 for scoring above the league average.</p>
+      </div>
     </div>
     <div class="hr">
-      <div id="status" role="status">Loading</div>
+      <div class="pill" id="status" role="status"><i class="dot"></i><span id="stxt">Loading</span></div>
       <button class="btn" id="mv" aria-pressed="false">Mobile view</button>
     </div>
   </header>
 
+  <div id="boot">
+    <svg class="ball" viewBox="0 0 80 50" aria-hidden="true"><use href="#fb"/></svg>
+    <p>Warming up the stadium lights</p>
+    <small>The first visit after a quiet spell can take about a minute.</small>
+  </div>
+
+  <div class="ticker" id="ticker" hidden>
+    <div class="tk-tag" id="tktag">Final</div>
+    <div class="tk-win"><div class="tk-track" id="tk"></div></div>
+  </div>
+
   <nav role="tablist" aria-label="Sections">
-    <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Table</button>
+    <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Standings</button>
+    <button role="tab" id="tab-playoffs" aria-selected="false" data-tab="playoffs">Playoff picture</button>
+    <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-luck" aria-selected="false" data-tab="luck">Luck</button>
     <button role="tab" id="tab-scoring" aria-selected="false" data-tab="scoring">Scoring</button>
     <button role="tab" id="tab-trends" aria-selected="false" data-tab="trends">Trends</button>
@@ -143,107 +297,104 @@
     <button role="tab" id="tab-players" aria-selected="false" data-tab="players">Players</button>
     <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
     <button role="tab" id="tab-stacks" aria-selected="false" data-tab="stacks">Stacks</button>
-    <button role="tab" id="tab-scores" aria-selected="false" data-tab="scores">Scores</button>
-    <button role="tab" id="tab-teams" aria-selected="false" data-tab="teams">Teams</button>
   </nav>
 
-  <div id="sample" class="note" hidden style="margin-top:0">Example data. The league appears here once the first week is final.</div>
+  <div id="sample" class="note" hidden>Example data. The league appears here once the first week is final.</div>
 
-  <section id="p-table">
-    <div class="bar">
-      <div class="meta" id="tmeta"></div>
-      <button class="btn" id="toggle" aria-pressed="false">Show weeks</button>
-    </div>
-    <p class="meta" style="margin:8px 0 0">Top 6 make the playoffs. The line marks the cutoff. 1st and 2nd get a bye.</p>
-    <div class="scroll std"><table id="t"></table></div>
-    <div id="cards"></div>
-    <div id="prize" style="margin-top:20px"></div>
-  </section>
+  <main>
+    <section id="p-table">
+      <div class="l3" id="l3" hidden></div>
+      <div class="bar" style="margin-top:16px">
+        <div class="meta" id="tmeta"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="replay" hidden>Replay season</button>
+          <button class="btn" id="toggle" aria-pressed="false">Show weeks</button>
+        </div>
+      </div>
+      <p class="meta" style="margin:8px 0 0">Top 6 make the playoffs. The gold line marks the cutoff. 1st and 2nd get a bye.</p>
+      <div class="scroll std"><table id="t"></table></div>
+      <div id="cards"></div>
+    </section>
 
-  <section id="p-luck" hidden>
-    <div class="meta" id="lmeta"></div>
-    <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
-    <div class="scroll"><table id="tl"></table></div>
-  </section>
+    <section id="p-playoffs" hidden>
+      <div class="meta" id="pmeta"></div>
+      <div id="picture"></div>
+    </section>
 
-  <section id="p-scoring" hidden>
-    <div class="meta" id="smeta"></div>
-    <p class="cap">Consistency is the standard deviation of weekly scores. Lower means steadier. Sorted by average score.</p>
-    <div class="scroll"><table id="ts"></table></div>
-    <div id="avgs" style="margin-top:20px"></div>
-  </section>
+    <section id="p-matchups" hidden>
+      <div class="chips" id="mchips" role="group" aria-label="Week"></div>
+      <div class="meta" id="mmeta" style="margin-top:10px"></div>
+      <div class="bugs" id="bugs"></div>
+    </section>
 
-  <section id="p-trends" hidden>
-    <div class="pick">
-      <label for="tsel" class="meta">Team</label>
-      <select id="tsel"></select>
-    </div>
-    <div class="chartbox">
-      <div class="ph">Weekly score vs league average</div>
-      <div id="ch1"></div>
-      <div class="legend"><span><i></i>Selected team</span><span><i class="avg"></i>League average</span></div>
-    </div>
-    <div class="chartbox">
-      <div class="ph">Terry's Table points race</div>
-      <div id="ch2"></div>
-      <div class="legend"><span><i></i>Selected team</span><span><i class="oth"></i>Other teams</span></div>
-    </div>
-  </section>
+    <section id="p-luck" hidden>
+      <div class="meta" id="lmeta"></div>
+      <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
+      <div class="scroll"><table id="tl"></table></div>
+    </section>
 
-  <section id="p-proj" hidden>
-    <p class="cap" style="margin-top:0">Starters only. Projected is the sum of the weekly projections for the 8 starters. Underdog means a lower projected total than the opponent.</p>
-    <div id="x-proj"></div>
-  </section>
+    <section id="p-scoring" hidden>
+      <div class="meta" id="smeta"></div>
+      <p class="cap">Consistency is the standard deviation of weekly scores. Lower means steadier. Sorted by average score.</p>
+      <div class="scroll"><table id="ts"></table></div>
+      <div id="avgs" style="margin-top:22px"></div>
+    </section>
 
-  <section id="p-pos" hidden>
-    <p class="cap" style="margin-top:0">Average points per week by lineup slot. RB, WR, and Flex each combine their 2 slots. Green is top 3 in the league, red is bottom 3.</p>
-    <div id="x-pos"></div>
-  </section>
+    <section id="p-trends" hidden>
+      <div class="pick">
+        <label for="tsel" class="meta">Team</label>
+        <select id="tsel"></select>
+      </div>
+      <div class="chartbox">
+        <div class="ph">Weekly score vs league average</div>
+        <div id="ch1"></div>
+        <div class="legend"><span><i></i>Selected team</span><span><i class="avg"></i>League average</span></div>
+      </div>
+      <div class="chartbox">
+        <div class="ph">Terry's Table points race</div>
+        <div id="ch2"></div>
+        <div class="legend"><span><i></i>Selected team</span><span><i class="oth"></i>Other teams</span></div>
+      </div>
+    </section>
+    <section id="p-proj" hidden>
+      <p class="cap" style="margin-top:0">Starters only. Projected is the sum of the weekly projections for the 8 starters. Underdog means a lower projected total than the opponent.</p>
+      <div id="x-proj"></div>
+    </section>
 
-  <section id="p-players" hidden>
-    <p class="cap" style="margin-top:0">Starters only. A dead starter scored under 2 points.</p>
-    <div id="x-players"></div>
-  </section>
+    <section id="p-pos" hidden>
+      <p class="cap" style="margin-top:0">Average points per week by lineup slot. RB, WR, and Flex each combine their 2 slots. Green is top 3 in the league, red is bottom 3.</p>
+      <div id="x-pos"></div>
+    </section>
 
-  <section id="p-awards" hidden>
-    <p class="cap" style="margin-top:0">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
-    <div id="x-awards"></div>
-  </section>
+    <section id="p-players" hidden>
+      <p class="cap" style="margin-top:0">Starters only. A dead starter scored under 2 points.</p>
+      <div id="x-players"></div>
+    </section>
 
-  <section id="p-stacks" hidden>
-    <p class="cap" style="margin-top:0">Starters only, grouped by NFL team. A stack is 3 or more starters from the same NFL team in one lineup, so one bad game hits several slots at once.</p>
-    <div id="x-stacks"></div>
-  </section>
+    <section id="p-awards" hidden>
+      <p class="cap" style="margin-top:0">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
+      <div id="x-awards"></div>
+    </section>
 
-  <section id="p-scores" hidden>
-    <div class="bar" style="margin-bottom:12px">
-      <div class="weeks" id="weeks" role="group" aria-label="Week"></div>
-    </div>
-    <div class="meta" id="wmeta" style="margin-bottom:12px"></div>
-    <div class="matchups" id="matchups"></div>
-  </section>
-
-  <section id="p-teams" hidden>
-    <p class="meta" style="margin-top:0">Enter the 12 team names once. Scores refer to teams by position, so renaming a team keeps its history.</p>
-    <div class="teams-grid" id="teams"></div>
-  </section>
+    <section id="p-stacks" hidden>
+      <p class="cap" style="margin-top:0">Starters only, grouped by NFL team. A stack is 3 or more starters from the same NFL team in one lineup, so one bad game hits several slots at once.</p>
+      <div id="x-stacks"></div>
+    </section>
+  </main>
 </div>
 
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'scores', 'teams'];
+  var TABS = ['table', 'playoffs', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
   var state = { teams: [], weeks: {} };
-  var week = 1, tab = 'table', showWeeks = false, canWrite = true, db = null, ref = null, selTeam = null;
+  var tab = 'table', showWeeks = false, selTeam = null;
+  var loaded = false, loadFailed = false, entered = false, replaying = false;
+  var spotWeek = null, mWeek = null, lastD = null;
+  var ANIM = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var $ = function (id) { return document.getElementById(id); };
 
-  function defaultTeams() { var a = []; for (var i = 0; i < N; i++) a.push('Team ' + (i + 1)); return a; }
-  function defaultWeek() {
-    var a = [];
-    for (var i = 0; i < N; i += 2) a.push({ a: i, b: i + 1, as: '', bs: '' });
-    return a;
-  }
-  state.teams = defaultTeams();
+  state.teams = (function () { var a = []; for (var i = 0; i < N; i++) a.push('Team ' + (i + 1)); return a; })();
 
   var SAMPLE_TEAMS = ['Snow Apostles', 'Light Cycles', 'Grid Bugs', 'Recognizers', 'Disc Wars', 'Identity Discs',
     'Clu Crew', "Flynn's Arcade", 'Bit Players', 'MCP Mob', 'Derezzed', 'Encom Eleven'];
@@ -259,30 +410,26 @@
     return isFinite(x) ? x : null;
   }
 
-  // A week counts only when all six matchups are filled, every team appears once, and every score parses.
+  // A week counts only when every team appears once and every score parses.
   function weekProblem(ms) {
     if (!ms) return 'No scores yet';
     var seen = {}, i;
     for (i = 0; i < ms.length; i++) {
       var m = ms[i];
-      if (m.a === m.b) return 'Matchup ' + (i + 1) + ' has the same team twice';
-      if (seen[m.a] || seen[m.b]) return 'A team appears in more than one matchup';
+      if (m.a === m.b) return 'same team twice';
+      if (seen[m.a] || seen[m.b]) return 'team in more than one matchup';
       seen[m.a] = seen[m.b] = true;
     }
-    for (i = 0; i < ms.length; i++) {
-      if (num(ms[i].as) === null || num(ms[i].bs) === null) return 'Matchup ' + (i + 1) + ' needs both scores';
-    }
+    for (i = 0; i < ms.length; i++) if (num(ms[i].as) === null || num(ms[i].bs) === null) return 'missing score';
     return null;
   }
-
   function counted(weeksObj) {
     var out = {};
-    Object.keys(weeksObj).forEach(function (k) {
-      if (!weekProblem(weeksObj[k])) out[k] = weeksObj[k];
-    });
+    Object.keys(weeksObj).forEach(function (k) { if (!weekProblem(weeksObj[k])) out[k] = weeksObj[k]; });
     return out;
   }
 
+  // Terry's Table scoring. Cents as integers so comparisons never hit float noise.
   function compute(teams, weeksObj) {
     var rows = teams.map(function (t, i) { return { i: i, team: t, lp: 0, pts: 0, pa: 0, w: 0, l: 0, t: 0, above: 0, below: 0, tops: 0, wk: {} }; });
     Object.keys(weeksObj).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
@@ -311,24 +458,34 @@
     return rows;
   }
 
-  function getData() {
+  function subset(weeksObj, keys) { var o = {}; keys.forEach(function (k) { o[k] = weeksObj[k]; }); return o; }
+
+  // upTo (optional) limits to the first N finished weeks, used by the season replay.
+  function getData(upTo) {
     var done = counted(state.weeks);
-    var keys = Object.keys(done).map(Number).sort(function (a, b) { return a - b; });
+    var all = Object.keys(done).map(Number).sort(function (a, b) { return a - b; });
     var d;
-    if (keys.length) d = { sample: false, teams: state.teams, weeksObj: done, keys: keys };
-    else {
+    if (all.length) {
+      var keys = upTo ? all.slice(0, upTo) : all;
+      d = { sample: false, teams: state.teams, weeksObj: subset(done, keys), keys: keys };
+    } else {
       var w = {};
-      SAMPLE_SCORES.forEach(function (wk, wi) {
-        w[wi + 1] = wk.map(function (s, k) { return { a: k * 2, b: k * 2 + 1, as: s[0], bs: s[1] }; });
-      });
-      d = { sample: true, teams: SAMPLE_TEAMS, weeksObj: w, keys: [1, 2, 3] };
+      SAMPLE_SCORES.forEach(function (wk, wi) { w[wi + 1] = wk.map(function (s, k) { return { a: k * 2, b: k * 2 + 1, as: s[0], bs: s[1] }; }); });
+      var sk = upTo ? [1, 2, 3].slice(0, upTo) : [1, 2, 3];
+      d = { sample: true, teams: SAMPLE_TEAMS, weeksObj: subset(w, sk), keys: sk };
     }
     d.rows = compute(d.teams, d.weeksObj);
+    if (d.keys.length > 1) {
+      var pk = d.keys.slice(0, -1), prev = compute(d.teams, subset(d.weeksObj, pk)), pm = {};
+      prev.forEach(function (r) { pm[r.i] = r.rank; });
+      d.rows.forEach(function (r) { r.move = pm[r.i] - r.rank; });
+    } else d.rows.forEach(function (r) { r.move = null; });
     $('sample').hidden = !d.sample;
+    $('sample').textContent = loadFailed ? 'Scores are unavailable right now, so this is example data. It will update when the connection returns.' : 'Example data. The league appears here once the first week is final.';
     return d;
   }
 
-  // Extra per-team analytics: all-play record, luck, scoring spread.
+  // Per-team analytics: all-play record, luck, scoring spread.
   function analyze(d) {
     var rows = d.rows;
     rows.forEach(function (r) {
@@ -366,8 +523,8 @@
   function f1(x) { return x.toFixed(1); }
   function half(x) { return x % 1 === 0 ? String(x) : x.toFixed(1); }
   function signed(x, f) { return (x > 0 ? '+' : '') + f(x); }
+  function fmtInt(x) { return String(Math.round(x)); }
 
-  // Build a simple table: heads = [[label, cls]], rows = [[[text, cls], ...]]
   function fill(tbl, heads, rows) {
     tbl.textContent = '';
     var hr = el('tr');
@@ -380,69 +537,242 @@
     });
   }
 
-  // ---- Table ----
-  function renderTable() {
-    var d = getData(), rows = d.rows, keys = d.keys;
+  // ---- Motion helpers ----
+  var shown = {};
+  function setNum(node, key, to, fmt) {
+    var from = key in shown ? shown[key] : 0;
+    shown[key] = to;
+    if (!ANIM || from === to) { node.textContent = fmt(to); return; }
+    var t0 = null;
+    node.textContent = fmt(from);
+    function tick(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / 850), e = 1 - Math.pow(1 - p, 3);
+      node.textContent = fmt(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(tick); else node.textContent = fmt(to);
+    }
+    requestAnimationFrame(tick);
+  }
+  function snapshot() {
+    var m = {};
+    document.querySelectorAll('#t tr[data-i], #cards .card[data-i]').forEach(function (e) {
+      var r = e.getBoundingClientRect();
+      if (r.height) m[e.tagName + e.getAttribute('data-i')] = r.top;
+    });
+    return m;
+  }
+  // FLIP: rows slide from their old position to the new one. First view: rows enter in a stagger.
+  function motion(snap, first) {
+    if (!ANIM) return;
+    var idx = 0;
+    document.querySelectorAll('#t tr[data-i], #cards .card[data-i]').forEach(function (e) {
+      var r = e.getBoundingClientRect();
+      if (!r.height) return;
+      var key = e.tagName + e.getAttribute('data-i');
+      if (key in snap) {
+        var dy = snap[key] - r.top;
+        if (Math.abs(dy) > 1) e.animate([{ transform: 'translateY(' + dy + 'px)' }, { transform: 'none' }], { duration: 800, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      } else if (first) {
+        e.animate([{ opacity: 0, transform: 'translateX(-46px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 600, delay: Math.min(idx, 14) * 55, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+      }
+      idx++;
+    });
+  }
+
+  function moveBadge(r) {
+    var s = el('span', 'mvt');
+    if (r.move === null || r.move === undefined) { s.textContent = ''; return s; }
+    if (r.move > 0) { s.className = 'mvt up'; s.textContent = '▲ ' + r.move; }
+    else if (r.move < 0) { s.className = 'mvt dn'; s.textContent = '▼ ' + Math.abs(r.move); }
+    else s.textContent = '–';
+    return s;
+  }
+
+  // ---- Standings ----
+  function renderTable(upTo) {
+    var d = getData(upTo), rows = d.rows, keys = d.keys;
+    lastD = d;
+    var snap = snapshot(), first = !entered;
     var open = [];
-    for (var w = 1; w <= WEEKS; w++) if (!counted(state.weeks)[w] && state.weeks[w] && !d.sample) open.push(w);
-    $('tmeta').textContent = (d.sample ? 'Weeks shown: 1 to 3 (example)' : 'Weeks counted: ' + keys.join(', ')) +
-      (open.length ? '. Not counted yet: ' + open.join(', ') + '.' : '');
+    var allDone = counted(state.weeks);
+    for (var w = 1; w <= WEEKS; w++) if (!allDone[w] && state.weeks[w] && !d.sample) open.push(w);
+    $('tmeta').textContent = (d.sample ? 'Weeks shown: ' + keys.join(', ') + ' (example)' : 'Weeks counted: ' + keys.join(', ')) +
+      (open.length && !upTo ? '. Not counted yet: ' + open.join(', ') + '.' : '');
+    $('replay').hidden = replaying ? false : (d.keys.length < 2 || d.sample);
+
     var t = $('t');
     t.className = showWeeks ? 'show' : '';
     t.textContent = '';
     var hr = el('tr');
-    var heads = [['Rank', 'c1'], ['Team', 'l c2'], ['League Pts', '']];
+    var heads = [['Rank', 'c1'], ['Team', 'l c2'], ['League Pts', ''], ['Fantasy Pts', ''], ['W', ''], ['L', ''], ['Wks Above Avg', ''], ['Wks Below Avg', ''], ['Top Scorer Wks', '']];
     heads.forEach(function (h) { hr.appendChild(el('th', h[1], h[0])); });
     keys.forEach(function (n) {
-      hr.appendChild(el('th', 'wk', 'Wk ' + n));
+      hr.appendChild(el('th', 'wk', 'Wk ' + n + ' Pts'));
+      hr.appendChild(el('th', 'wk', 'Wk ' + n + ' W/L'));
+      hr.appendChild(el('th', 'wk', 'Wk ' + n + ' LP'));
     });
     t.appendChild(hr);
     var cards = $('cards'); cards.textContent = '';
     rows.forEach(function (r) {
-      var tr = el('tr');
-      tr.appendChild(el('td', 'c1', String(r.rank)));
+      var seed = r.rank <= 2 ? ' s-bye' : (r.rank <= 6 ? ' s-in' : ' out');
+      var tr = el('tr', (seed + (r.rank === 6 ? ' cut' : '')).trim());
+      tr.setAttribute('data-i', String(r.i));
+      var tdRank = el('td', 'c1');
+      tdRank.appendChild(el('span', 'rk', String(r.rank)));
+      tdRank.appendChild(moveBadge(r));
+      tr.appendChild(tdRank);
       var tdTeam = el('td', 'l c2 team', r.team);
       if (r.rank <= 2) tdTeam.appendChild(el('span', 'bye', 'Bye'));
-      if (r.rank === 6) tr.className = 'cut';
       tr.appendChild(tdTeam);
-      tr.appendChild(el('td', 'lp', String(r.lp)));
+      var tdLp = el('td', 'lp'); setNum(tdLp, 'lp' + r.i, r.lp, fmtInt); tr.appendChild(tdLp);
+      var tdPf = el('td', 'pf'); setNum(tdPf, 'pf' + r.i, r.pts, f2); tr.appendChild(tdPf);
+      tr.appendChild(el('td', '', String(r.w) + (r.t ? '+' + r.t + 'T' : '')));
+      tr.appendChild(el('td', '', String(r.l)));
+      tr.appendChild(el('td', '', String(r.above)));
+      tr.appendChild(el('td', '', String(r.below)));
+      tr.appendChild(el('td', '', String(r.tops)));
       keys.forEach(function (n) {
         var x = r.wk[n];
+        tr.appendChild(el('td', 'wk' + (x && x.ab ? ' hi' : '') + (x && x.top ? ' topc' : ''), x ? f2(x.pts) : ''));
+        tr.appendChild(el('td', 'wk', x ? x.res : ''));
         tr.appendChild(el('td', 'wk', x ? String(x.lp) : ''));
       });
       t.appendChild(tr);
 
-      var c = el('details', 'card' + (r.rank === 6 ? ' cut' : ''));
+      var c = el('details', 'card' + seed + (r.rank === 6 ? ' cut' : ''));
+      c.setAttribute('data-i', String(r.i));
       var s = el('summary');
-      s.appendChild(el('span', 'cr', String(r.rank)));
+      var cr = el('span', 'cr'); cr.appendChild(el('span', 'rk', String(r.rank))); cr.appendChild(moveBadge(r)); s.appendChild(cr);
       var nm = el('span', 'cn', r.team);
       if (r.rank <= 2) nm.appendChild(el('span', 'bye', 'Bye'));
+      nm.appendChild(el('span', 'cs', r.w + '-' + r.l + (r.t ? '-' + r.t : '') + '  ·  ' + f2(r.pts) + ' pts for'));
       s.appendChild(nm);
-      var lp = el('span', 'cl', String(r.lp)); lp.appendChild(el('small', '', 'League pts'));
+      var lp = el('span', 'cl'); setNum(lp, 'clp' + r.i, r.lp, fmtInt); lp.appendChild(el('small', '', 'League pts'));
       s.appendChild(lp);
       c.appendChild(s);
       var body = el('div', 'cb');
       keys.forEach(function (n) {
         var x = r.wk[n], line = el('div');
-        line.appendChild(el('span', '', 'Week ' + n));
-        line.appendChild(el('span', '', x.lp + ' pts'));
+        line.appendChild(el('span', '', 'Wk ' + n + '  ' + f2(x.pts) + (x.top ? '  top scorer' : '')));
+        line.appendChild(el('span', x.ab ? 'ab' : '', x.res + '  ' + x.lp + ' pts' + (x.ab ? '  above avg' : '')));
         body.appendChild(line);
       });
       c.appendChild(body);
       cards.appendChild(c);
     });
-    var pz = $('prize'); pz.textContent = '';
-    pz.appendChild(el('div', 'ph', 'Weekly top scorer'));
-    var list = el('div', 'weeks');
+    renderSpot(d, !upTo ? false : true, upTo);
+    motion(snap, first);
+    if (loaded) entered = true;
+  }
+
+  // Lower third: weekly top scorer
+  function renderSpot(d, replay, upTo) {
+    var box = $('l3');
+    if (d.sample) { box.hidden = true; return; }
+    var keys = d.keys, rows = d.rows;
+    var wk = (upTo || spotWeek === null || keys.indexOf(spotWeek) < 0) ? keys[keys.length - 1] : spotWeek;
+    var tops = rows.filter(function (r) { return r.wk[wk] && r.wk[wk].top; });
+    var changing = box.getAttribute('data-wk') !== String(wk);
+    box.setAttribute('data-wk', String(wk));
+    box.hidden = false;
+    box.textContent = '';
+    box.appendChild(el('div', 'l3-tag', 'Top scorer, week ' + wk));
+    var main = el('div');
+    main.appendChild(el('div', 'l3-team', tops.map(function (r) { return r.team; }).join(' and ')));
+    main.appendChild(el('div', 'l3-sub', tops.length > 1 ? 'Tied for the weekly $50 prize' : 'Wins the weekly $50 prize'));
+    box.appendChild(main);
+    var sc = el('div', 'l3-score'); setNum(sc, 'spot', tops[0].wk[wk].pts, f2); box.appendChild(sc);
+    if (!upTo) {
+      var chips = el('div', 'chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Week');
+      keys.forEach(function (n) {
+        var b = el('button', 'chip', 'Wk ' + n); b.type = 'button';
+        b.setAttribute('aria-pressed', String(n === wk));
+        b.addEventListener('click', function () { spotWeek = n; renderSpot(lastD, false); });
+        chips.appendChild(b);
+      });
+      box.appendChild(chips);
+    }
+    if (changing && ANIM) { box.classList.remove('play'); void box.offsetWidth; box.classList.add('play'); }
+  }
+
+  // ---- Playoff picture ----
+  function plate(r, cls, d, i, line1, line2) {
+    var p = el('div', 'plate ' + cls);
+    p.style.setProperty('--d', (i * 0.06) + 's');
+    p.appendChild(el('div', 'sd', String(r.rank)));
+    var mid = el('div');
+    mid.appendChild(el('div', 'pn', r.team));
+    mid.appendChild(el('div', 'pg', line1));
+    p.appendChild(mid);
+    var pl = el('div', 'pl', String(r.lp)); pl.appendChild(el('small', '', line2));
+    p.appendChild(pl);
+    return p;
+  }
+  function gapText(r, ref, above) {
+    var diff = r.lp - ref.lp;
+    if (above) {
+      if (diff > 0) return diff + (diff === 1 ? ' pt' : ' pts') + ' clear of 7th';
+      return r.pts > ref.pts ? 'Level with 7th, ahead on points' : 'Level with 7th, behind on points';
+    }
+    if (diff < 0) return Math.abs(diff) + (diff === -1 ? ' pt' : ' pts') + ' behind 6th';
+    return r.pts > ref.pts ? 'Level with 6th, ahead on points' : 'Level with 6th, behind on points';
+  }
+  function renderPlayoffs() {
+    var d = getData(), rows = d.rows, box = $('picture');
+    $('pmeta').textContent = (d.sample ? 'Example data. ' : '') + 'After week ' + d.keys[d.keys.length - 1] + '. Ties on League Points are broken by Fantasy Points.';
+    box.textContent = '';
+    var r6 = rows[5], r7 = rows[6], k = 0;
+    function tier(title, cls, list, fn) {
+      var wrap = el('div', 'tier'); wrap.appendChild(el('h3', 'tier-h', title));
+      var g = el('div', 'plates');
+      list.forEach(function (r) { g.appendChild(fn(r, k++)); });
+      wrap.appendChild(g); box.appendChild(wrap);
+    }
+    tier('First-round bye', 'p-bye', rows.slice(0, 2), function (r, i) { return plate(r, 'p-bye', d, i, gapText(r, r7, true), 'League pts'); });
+    tier('In the playoffs', 'p-in', rows.slice(2, 6), function (r, i) { return plate(r, 'p-in', d, i, gapText(r, r7, true), 'League pts'); });
+    box.appendChild(el('div', 'cutline', 'Playoff cutoff'));
+    tier('On the bubble', 'p-bub', rows.slice(6, 8), function (r, i) { return plate(r, 'p-bub', d, i, gapText(r, r6, false), 'League pts'); });
+    tier('Outside', 'p-out', rows.slice(8), function (r, i) { return plate(r, 'p-out', d, i, gapText(r, r6, false), 'League pts'); });
+  }
+
+  // ---- Matchup scorebugs ----
+  function weekChips(box, keys, cur, onPick) {
+    box.textContent = '';
     keys.forEach(function (n) {
-      var tops = rows.filter(function (r) { return r.wk[n] && r.wk[n].top; });
-      var item = el('div', 'prizeitem');
-      item.appendChild(el('span', 'pw', 'Wk ' + n));
-      item.appendChild(el('span', 'pn', tops.map(function (r) { return r.team; }).join(' and ')));
-      item.appendChild(el('span', 'ps', f2(tops[0].wk[n].pts)));
-      list.appendChild(item);
+      var b = el('button', 'chip', 'Wk ' + n); b.type = 'button';
+      b.setAttribute('aria-pressed', String(n === cur));
+      b.addEventListener('click', function () { onPick(n); });
+      box.appendChild(b);
     });
-    pz.appendChild(list);
+  }
+  function renderMatchups() {
+    var d = getData();
+    if (mWeek === null || d.keys.indexOf(mWeek) < 0) mWeek = d.keys[d.keys.length - 1];
+    weekChips($('mchips'), d.keys, mWeek, function (n) { mWeek = n; renderMatchups(); });
+    var ms = d.weeksObj[mWeek], mx = -Infinity;
+    ms.forEach(function (m) { mx = Math.max(mx, Math.round(num(m.as) * 100), Math.round(num(m.bs) * 100)); });
+    var avg = d.rows[0].wk[mWeek].avg;
+    $('mmeta').textContent = (d.sample ? 'Example data. ' : '') + 'Week ' + mWeek + ' final. League average ' + f2(avg) + '.';
+    var box = $('bugs'); box.textContent = '';
+    ms.forEach(function (m, k) {
+      var bug = el('div', 'bug'); bug.style.setProperty('--d', (k * 0.07) + 's');
+      var a = Math.round(num(m.as) * 100), b = Math.round(num(m.bs) * 100);
+      [[m.a, num(m.as), a > b], [m.b, num(m.bs), b > a]].forEach(function (s) {
+        var row = el('div', 'bug-r' + (s[2] ? ' w' : ''));
+        row.appendChild(el('div', 'bn', d.teams[s[0]]));
+        row.appendChild(el('div', 'bs', f2(s[1])));
+        bug.appendChild(row);
+      });
+      var f = el('div', 'bug-f');
+      f.appendChild(el('span', '', a === b ? 'Tie game' : 'Won by ' + f2(Math.abs(a - b) / 100)));
+      var topNames = [];
+      if (a === mx) topNames.push(d.teams[m.a]);
+      if (b === mx) topNames.push(d.teams[m.b]);
+      if (topNames.length) f.appendChild(el('span', '', 'Top score of the week'));
+      bug.appendChild(f);
+      box.appendChild(bug);
+    });
   }
 
   // ---- Luck ----
@@ -478,16 +808,15 @@
     box.appendChild(el('div', 'ph', 'League average by week'));
     var list = el('div', 'weeks');
     d.keys.forEach(function (n) {
-      var item = el('div', 'prizeitem');
+      var item = el('div', 'avgitem');
       item.appendChild(el('span', 'pw', 'Wk ' + n));
-      item.appendChild(el('span', 'pn', 'League average'));
       item.appendChild(el('span', 'ps', f2(d.rows[0].wk[n].avg)));
       list.appendChild(item);
     });
     box.appendChild(list);
   }
 
-  // ---- Trends (SVG charts, one scale per chart) ----
+  // ---- Trends (SVG charts) ----
   var NS = 'http://www.w3.org/2000/svg';
   function sv(tag, attrs, text) {
     var e = document.createElementNS(NS, tag);
@@ -502,8 +831,8 @@
     for (var v = lo; v <= hi + step / 2; v += step) t.push(Math.round(v * 1000) / 1000);
     return t;
   }
-  function lineChart(host, keys, series, yMin, yMax, labelSel) {
-    var W = 480, H = 260, L = 44, R = 18, T = 20, B = 30, pw = W - L - R, ph = H - T - B;
+  function lineChart(host, keys, series, yMin, yMax) {
+    var W = 480, H = 260, L = 56, R = 26, T = 20, B = 30, pw = W - L - R, ph = H - T - B;
     var ticks = niceTicks(yMin, yMax), lo = ticks[0], hi = ticks[ticks.length - 1];
     var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
     var x = function (i) { return L + (keys.length === 1 ? pw / 2 : i * pw / (keys.length - 1)); };
@@ -515,19 +844,29 @@
     keys.forEach(function (n, i) {
       svg.appendChild(sv('text', { x: x(i), y: H - 8, 'text-anchor': 'middle', 'class': 'ax' }, 'Wk ' + n));
     });
+    var draw = [];
     series.forEach(function (s) {
       if (s.vals.length > 1) {
-        svg.appendChild(sv('polyline', { points: s.vals.map(function (v, i) { return x(i) + ',' + y(v); }).join(' '), 'class': s.cls }));
+        var pl = sv('polyline', { points: s.vals.map(function (v, i) { return x(i) + ',' + y(v); }).join(' '), 'class': s.cls });
+        svg.appendChild(pl);
+        if (s.cls === 's-sel') draw.push(pl);
       }
       if (s.dots) {
         s.vals.forEach(function (v, i) {
-          svg.appendChild(sv('circle', { cx: x(i), cy: y(v), r: 4.5, 'class': 'dot' }));
-          svg.appendChild(sv('text', { x: x(i), y: y(v) - 10, 'text-anchor': 'middle', 'class': 'vl' }, s.fmt(v)));
+          svg.appendChild(sv('circle', { cx: x(i), cy: y(v), r: 4.8, 'class': 'dot' }));
+          svg.appendChild(sv('text', { x: x(i), y: y(v) - 11, 'text-anchor': 'middle', 'class': 'vl' }, s.fmt(v)));
         });
       }
     });
     host.textContent = '';
     host.appendChild(svg);
+    if (ANIM) draw.forEach(function (pl) {
+      var len = pl.getTotalLength ? pl.getTotalLength() : 0;
+      if (!len) return;
+      pl.style.strokeDasharray = len + ' ' + len;
+      pl.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 1000, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      setTimeout(function () { pl.style.strokeDasharray = ''; }, 1050);
+    });
   }
 
   function renderTrends() {
@@ -771,124 +1110,48 @@
     }).catch(function () {});
   }
 
-  // ---- Scores ----
-  function getWeek(n) { return state.weeks[n] || defaultWeek(); }
-
-  function renderWeekChips() {
-    var box = $('weeks'); box.textContent = '';
-    for (var n = 1; n <= WEEKS; n++) {
-      (function (n) {
-        var b = el('button', 'chip' + (state.weeks[n] && !weekProblem(state.weeks[n]) ? ' done' : ''), 'Wk ' + n);
-        b.type = 'button';
-        b.setAttribute('aria-pressed', String(n === week));
-        b.addEventListener('click', function () { week = n; renderScores(); });
-        box.appendChild(b);
-      })(n);
-    }
-  }
-
-  function teamSelect(value, onChange, cls) {
-    var s = el('select', cls);
-    state.teams.forEach(function (name, i) {
-      var o = el('option', '', name || ('Team ' + (i + 1)));
-      o.value = String(i); if (i === value) o.selected = true;
-      s.appendChild(o);
+  // ---- Ticker ----
+  var tickSig = '';
+  function updateTicker() {
+    var d = getData(), tk = $('ticker');
+    if (d.sample) { tk.hidden = true; return; }
+    var n = d.keys[d.keys.length - 1], items = [], rows = d.rows;
+    d.weeksObj[n].forEach(function (m) {
+      var a = Math.round(num(m.as) * 100), b = Math.round(num(m.bs) * 100);
+      var hi = a >= b ? [m.a, m.as] : [m.b, m.bs], lo = a >= b ? [m.b, m.bs] : [m.a, m.as];
+      items.push([[d.teams[hi[0]] + ' ', false], [f2(num(hi[1])), true], [a === b ? ' ties ' : ' def. ', false], [d.teams[lo[0]] + ' ', false], [f2(num(lo[1])), true]]);
     });
-    s.disabled = !canWrite;
-    s.addEventListener('change', function () { onChange(parseInt(s.value, 10)); });
-    return s;
-  }
-
-  function scoreInput(value, onChange, cls, label) {
-    var inp = el('input', 'score ' + cls);
-    inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = value === undefined ? '' : String(value);
-    inp.placeholder = '0.00'; inp.setAttribute('aria-label', label);
-    inp.disabled = !canWrite;
-    inp.addEventListener('input', function () { onChange(inp.value.trim()); });
-    return inp;
-  }
-
-  function edit(fn) {
-    var ms = JSON.parse(JSON.stringify(getWeek(week)));
-    fn(ms);
-    state.weeks[week] = ms;
-    renderWeekChips(); updateWeekMeta(); save();
-  }
-
-  function updateWeekMeta() {
-    var p = weekProblem(state.weeks[week]);
-    $('wmeta').textContent = state.weeks[week]
-      ? (p ? 'Week ' + week + ' is not counted yet: ' + p + '.' : 'Week ' + week + ' is complete and counted in the table.')
-      : 'Week ' + week + ': pick each matchup and enter both scores. The week counts once all 12 teams and 12 scores are in.';
-  }
-
-  function renderScores() {
-    renderWeekChips(); updateWeekMeta();
-    var box = $('matchups'); box.textContent = '';
-    getWeek(week).forEach(function (m, k) {
-      var row = el('div', 'm');
-      var A = teamSelect(m.a, function (v) { edit(function (ms) { ms[k].a = v; }); }, 'ta');
-      var SA = scoreInput(m.as, function (v) { edit(function (ms) { ms[k].as = v; }); }, 'sa', 'Score for first team, matchup ' + (k + 1));
-      var SB = scoreInput(m.bs, function (v) { edit(function (ms) { ms[k].bs = v; }); }, 'sb', 'Score for second team, matchup ' + (k + 1));
-      var B = teamSelect(m.b, function (v) { edit(function (ms) { ms[k].b = v; }); }, 'tb');
-      row.appendChild(A); row.appendChild(SA); row.appendChild(SB); row.appendChild(B);
-      box.appendChild(row);
-    });
-  }
-
-  // ---- Teams ----
-  function renderTeams() {
-    var box = $('teams'); box.textContent = '';
-    state.teams.forEach(function (name, i) {
-      var lab = el('label', 'tl', 'Team ' + (i + 1));
-      var inp = el('input'); inp.type = 'text'; inp.id = 'team-' + i; inp.value = name; inp.maxLength = 40; inp.disabled = !canWrite;
-      inp.addEventListener('input', function () { state.teams[i] = inp.value; save(); });
-      lab.appendChild(inp); box.appendChild(lab);
-    });
-  }
-
-  // ---- Persistence ----
-  var timer = null, inflight = false, dirty = false;
-  function setStatus(s) { $('status').textContent = s; }
-  function save() {
-    if (!db || !canWrite) return;
-    dirty = true; setStatus('Saving');
-    clearTimeout(timer); timer = setTimeout(flush, 700);
-  }
-  function flush() {
-    if (inflight) { timer = setTimeout(flush, 300); return; }
-    if (!dirty) return;
-    dirty = false; inflight = true;
-    var body = JSON.parse(JSON.stringify({ teams: state.teams, weeks: state.weeks }));
-    ref.set(body).then(function () { inflight = false; setStatus(dirty ? 'Saving' : 'Saved'); })
-      .catch(function (e) {
-        inflight = false;
-        setStatus(e && e.code === 'invalid_argument' ? 'View only' : 'Not saved. Check your connection.');
-        if (e && e.code === 'invalid_argument') { canWrite = false; renderCurrent(); }
+    var tops = rows.filter(function (r) { return r.wk[n].top; });
+    items.push([['Top scorer: ', false], [tops.map(function (r) { return r.team; }).join(' and '), true], [' ' + f2(tops[0].wk[n].pts), false]]);
+    items.push([['Leader: ', false], [rows[0].team, true], [' ' + rows[0].lp + ' League Pts', false]]);
+    var sig = JSON.stringify(items);
+    if (sig === tickSig && !tk.hidden) return;
+    tickSig = sig;
+    $('tktag').textContent = 'Week ' + n + ' final';
+    var track = $('tk'); track.textContent = '';
+    var chars = 0;
+    for (var rep = 0; rep < 2; rep++) {
+      items.forEach(function (parts) {
+        var it = el('span', 'tk-item');
+        parts.forEach(function (p) { it.appendChild(p[1] ? el('b', '', p[0]) : document.createTextNode(p[0])); if (rep === 0) chars += p[0].length + 4; });
+        track.appendChild(it);
       });
+    }
+    track.style.animationDuration = Math.max(28, Math.round(chars * 0.2)) + 's';
+    tk.hidden = false;
   }
 
-  function editing() {
-    var a = document.activeElement;
-    return a && (a.tagName === 'INPUT' || a.tagName === 'SELECT');
-  }
-
-  function fromRemote(d) {
-    if (!d) return;
-    state.teams = Array.isArray(d.teams) && d.teams.length === N ? d.teams.map(String) : state.teams;
-    state.weeks = d.weeks && typeof d.weeks === 'object' ? d.weeks : {};
-  }
-
-  // ---- Tabs and view mode ----
-  var RENDER = { table: renderTable, luck: renderLuck, scoring: renderScoring, trends: renderTrends, proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, scores: renderScores, teams: renderTeams };
-  function renderCurrent() { RENDER[tab](); }
+  // ---- Tabs, view mode, status ----
+  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks };
+  function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   function setTab(t) {
+    if (replaying) return;
     tab = t;
     TABS.forEach(function (k) {
       $('p-' + k).hidden = k !== t;
       $('tab-' + k).setAttribute('aria-selected', String(k === t));
     });
-    if (t !== 'scores' && t !== 'teams') getData(); else $('sample').hidden = true;
     renderCurrent();
   }
   document.querySelectorAll('nav button').forEach(function (b) {
@@ -902,6 +1165,24 @@
   });
   $('tsel').addEventListener('change', function () { selTeam = parseInt($('tsel').value, 10); renderTrends(); });
 
+  // Season replay: rebuild the standings week by week and let the rows re-rank.
+  $('replay').addEventListener('click', function () {
+    var d = getData(), total = d.keys.length, btn = $('replay');
+    if (replaying || total < 2) return;
+    replaying = true; btn.disabled = true;
+    var k = 1;
+    (function step() {
+      renderTable(k);
+      btn.textContent = 'Week ' + k + ' of ' + total;
+      if (k < total) { k++; setTimeout(step, 1900); }
+      else setTimeout(function () { replaying = false; btn.disabled = false; btn.textContent = 'Replay season'; renderTable(); }, 1900);
+    })();
+  });
+
+  function setStatus(s, err) {
+    $('stxt').textContent = s;
+    $('status').className = 'pill' + (err ? ' err' : '');
+  }
   function setMobile(on, remember) {
     $('page').classList.toggle('mv', on);
     $('mv').setAttribute('aria-pressed', String(on));
@@ -913,14 +1194,23 @@
   try { pref = localStorage.getItem('terry-mv'); } catch (e) {}
   setMobile(pref === null ? window.innerWidth < 600 : pref === '1', false);
 
-  renderTable();
-  setStatus('Loading');
+  // ---- Splash ----
+  var splash = $('splash');
+  function closeSplash() {
+    if (!splash || !splash.parentNode) return;
+    splash.classList.add('out');
+    setTimeout(function () { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 800);
+  }
+  if (!ANIM) { closeSplash(); } else {
+    splash.addEventListener('click', closeSplash);
+    setTimeout(closeSplash, 2500);
+  }
 
-  // Public, read-only mode: scores come from the server, which reads Yahoo.
-  canWrite = false;
-  $('tab-scores').hidden = true; $('tab-teams').hidden = true;
-  $('p-scores').remove(); $('p-teams').remove();
-  TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
+  // ---- Data: server reads Yahoo or scores.json ----
+  function ready() {
+    $('page').classList.remove('booting');
+    loaded = true;
+  }
   function load() {
     fetch('/api/state').then(function (r) {
       if (!r.ok) throw new Error('bad status');
@@ -928,12 +1218,21 @@
     }).then(function (d) {
       state.teams = d.teams || state.teams;
       state.weeks = d.weeks || {};
+      loadFailed = false;
       setStatus('Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
-      renderCurrent();
+      var wasLoaded = loaded;
+      ready();
+      if (!wasLoaded) setTab(tab); else renderCurrent();
       loadLU();
-    }).catch(function () { setStatus('Could not load scores. Try again soon.'); });
+    }).catch(function () {
+      if (!loaded) { loadFailed = true; ready(); setTab(tab); }
+      setStatus('Could not load scores. Try again soon.', true);
+    });
   }
+  setStatus('Loading');
   load();
   setInterval(load, 300000);
 })();
 </script>
+</body>
+</html>
