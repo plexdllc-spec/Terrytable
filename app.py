@@ -9,6 +9,7 @@ Environment variables (set them on the host, never in the code):
 """
 import base64
 import hmac
+import json
 import os
 import secrets
 import threading
@@ -150,8 +151,15 @@ def index():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
 
+SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json")
+
+
 @app.route("/api/state")
 def api_state():
+    # If scores.json exists it is the source (hand-entered weeks). Delete it to use Yahoo live.
+    if os.path.exists(SCORES_FILE):
+        with open(SCORES_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
     now = time.time()
     if _cache["data"] is not None and now - _cache["t"] < CACHE_SECONDS:
         return jsonify(_cache["data"])
