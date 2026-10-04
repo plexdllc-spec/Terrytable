@@ -138,6 +138,10 @@
     <button role="tab" id="tab-luck" aria-selected="false" data-tab="luck">Luck</button>
     <button role="tab" id="tab-scoring" aria-selected="false" data-tab="scoring">Scoring</button>
     <button role="tab" id="tab-trends" aria-selected="false" data-tab="trends">Trends</button>
+    <button role="tab" id="tab-proj" aria-selected="false" data-tab="proj">Projections</button>
+    <button role="tab" id="tab-pos" aria-selected="false" data-tab="pos">Positions</button>
+    <button role="tab" id="tab-players" aria-selected="false" data-tab="players">Players</button>
+    <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
     <button role="tab" id="tab-scores" aria-selected="false" data-tab="scores">Scores</button>
     <button role="tab" id="tab-teams" aria-selected="false" data-tab="teams">Teams</button>
   </nav>
@@ -185,6 +189,26 @@
     </div>
   </section>
 
+  <section id="p-proj" hidden>
+    <p class="cap" style="margin-top:0">Starters only. Projected is the sum of the weekly projections for the 8 starters. Underdog means a lower projected total than the opponent.</p>
+    <div id="x-proj"></div>
+  </section>
+
+  <section id="p-pos" hidden>
+    <p class="cap" style="margin-top:0">Average points per week by lineup slot. RB, WR, and Flex each combine their 2 slots. Green is top 3 in the league, red is bottom 3.</p>
+    <div id="x-pos"></div>
+  </section>
+
+  <section id="p-players" hidden>
+    <p class="cap" style="margin-top:0">Starters only. A dead starter scored under 2 points.</p>
+    <div id="x-players"></div>
+  </section>
+
+  <section id="p-awards" hidden>
+    <p class="cap" style="margin-top:0">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
+    <div id="x-awards"></div>
+  </section>
+
   <section id="p-scores" hidden>
     <div class="bar" style="margin-bottom:12px">
       <div class="weeks" id="weeks" role="group" aria-label="Week"></div>
@@ -202,7 +226,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'luck', 'scoring', 'trends', 'scores', 'teams'];
+  var TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'scores', 'teams'];
   var state = { teams: [], weeks: {} };
   var week = 1, tab = 'table', showWeeks = false, canWrite = true, db = null, ref = null, selTeam = null;
   var $ = function (id) { return document.getElementById(id); };
@@ -523,6 +547,183 @@
     lineChart($('ch2'), d.keys, ser, 0, maxCum);
   }
 
+  // ---- Lineup analytics (starters only, from /api/lineups) ----
+  var LU = null;
+  function put(host, heads, rows) {
+    var w = el('div', 'scroll'), t = el('table');
+    fill(t, heads, rows); w.appendChild(t); host.appendChild(w);
+  }
+  function sec(host, title, first) {
+    var h = el('div', 'ph', title);
+    if (!first) h.style.marginTop = '24px';
+    host.appendChild(h);
+  }
+  function luReady(host) {
+    host.textContent = '';
+    var d = getData(), keys = [];
+    if (!d.sample && LU) keys = d.keys.filter(function (n) { return LU[n]; });
+    if (!keys.length) {
+      host.appendChild(el('p', 'cap', d.sample ? 'Lineup analytics appear once real weeks are loaded.' : 'Lineup data is not available yet.'));
+      return null;
+    }
+    return { d: d, keys: keys };
+  }
+  function projOf(n, i) { var s = 0; LU[n][i].forEach(function (p) { s += p.proj; }); return s; }
+  function starters(x) {
+    var all = [];
+    x.keys.forEach(function (n) {
+      x.d.rows.forEach(function (r) {
+        LU[n][r.i].forEach(function (p) {
+          all.push({ t: r.i, n: n, name: p.p, s: p.s, proj: p.proj, pts: p.pts, f: p.f || '' });
+        });
+      });
+    });
+    return all;
+  }
+
+  function renderProj() {
+    var host = $('x-proj'), x = luReady(host); if (!x) return;
+    var d = x.d, gp = x.keys.length, T = {}, ups = [];
+    d.rows.forEach(function (r) { T[r.i] = { r: r, proj: 0, act: 0, beat: 0, dogG: 0, dogW: 0, favG: 0, favL: 0 }; });
+    x.keys.forEach(function (n) {
+      d.weeksObj[n].forEach(function (m) {
+        var pa = projOf(n, m.a), pb = projOf(n, m.b), sa = num(m.as), sb = num(m.bs);
+        [[m.a, pa, pb, sa, sb], [m.b, pb, pa, sb, sa]].forEach(function (q) {
+          var t = T[q[0]];
+          t.proj += q[1]; t.act += q[3];
+          if (q[3] > q[1]) t.beat++;
+          if (q[1] < q[2]) { t.dogG++; if (q[3] > q[4]) t.dogW++; }
+          else if (q[1] > q[2]) { t.favG++; if (q[3] < q[4]) t.favL++; }
+        });
+        if ((pa < pb && sa > sb) || (pb < pa && sb > sa)) {
+          var wa = sa > sb;
+          ups.push({ n: n, w: wa ? m.a : m.b, l: wa ? m.b : m.a, ws: wa ? sa : sb, ls: wa ? sb : sa, wp: wa ? pa : pb, lp: wa ? pb : pa });
+        }
+      });
+    });
+    var list = Object.keys(T).map(function (k) { return T[k]; });
+    list.sort(function (a, b) { return (b.act - b.proj) - (a.act - a.proj); });
+    sec(host, 'Actual vs projected', true);
+    put(host, [['Team', 'l c0'], ['Proj', ''], ['Actual', ''], ['Diff', ''], ['Per Wk', ''], ['Beat Proj', ''], ['Underdog Wins', ''], ['Fav Losses', '']],
+      list.map(function (t) {
+        var diff = t.act - t.proj;
+        return [[t.r.team, 'l c0 team'], [f2(t.proj), ''], [f2(t.act), ''], [signed(diff, f2), diff >= 0 ? 'pos' : 'neg'],
+          [signed(diff / gp, f1), diff >= 0 ? 'pos' : 'neg'], [t.beat + '/' + gp, ''],
+          [t.dogW + '/' + t.dogG, ''], [t.favL + '/' + t.favG, '']];
+      }));
+    sec(host, 'Biggest upsets (lower projection won)');
+    ups.sort(function (a, b) { return (b.lp - b.wp) - (a.lp - a.wp); });
+    if (!ups.length) { host.appendChild(el('p', 'cap', 'No upsets yet.')); return; }
+    put(host, [['Wk', ''], ['Winner', 'l'], ['Score', ''], ['Proj', ''], ['Loser', 'l'], ['Score', ''], ['Proj', '']],
+      ups.slice(0, 10).map(function (u) {
+        return [[String(u.n), ''], [d.teams[u.w], 'l team'], [f2(u.ws), ''], [f2(u.wp), ''], [d.teams[u.l], 'l team'], [f2(u.ls), ''], [f2(u.lp), '']];
+      }));
+  }
+
+  var SLOT_COLS = [['QB', 'QB'], ['RB', 'RB'], ['WR', 'WR'], ['TE', 'TE'], ['FLEX', 'Flex']];
+  function renderPos() {
+    var host = $('x-pos'), x = luReady(host); if (!x) return;
+    var d = x.d, gp = x.keys.length, S = {};
+    d.rows.forEach(function (r) { S[r.i] = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0 }; });
+    starters(x).forEach(function (p) { if (S[p.t][p.s] !== undefined) S[p.t][p.s] += p.pts; });
+    var avg = {}, hi = {}, lo = {};
+    SLOT_COLS.forEach(function (c) {
+      var vals = d.rows.map(function (r) { return S[r.i][c[0]] / gp; }), sum = 0;
+      vals.forEach(function (v) { sum += v; });
+      avg[c[0]] = sum / vals.length;
+      vals.sort(function (a, b) { return b - a; });
+      hi[c[0]] = vals[2]; lo[c[0]] = vals[vals.length - 3];
+    });
+    var rows = d.rows.map(function (r) {
+      var cells = [[r.team, 'l c0 team']];
+      SLOT_COLS.forEach(function (c) {
+        var v = S[r.i][c[0]] / gp;
+        cells.push([f1(v), v >= hi[c[0]] ? 'pos' : (v <= lo[c[0]] ? 'neg' : '')]);
+      });
+      return cells;
+    });
+    var avgRow = [['League avg', 'l c0 team']];
+    SLOT_COLS.forEach(function (c) { avgRow.push([f1(avg[c[0]]), '']); });
+    rows.push(avgRow);
+    sec(host, 'Average points per week by slot', true);
+    put(host, [['Team', 'l c0']].concat(SLOT_COLS.map(function (c) { return [c[1], '']; })), rows);
+  }
+
+  function renderPlayers() {
+    var host = $('x-players'), x = luReady(host); if (!x) return;
+    var d = x.d, all = starters(x);
+    sec(host, 'Team MVP and star dependence', true);
+    var mv = d.rows.map(function (r) {
+      var by = {};
+      all.filter(function (p) { return p.t === r.i; }).forEach(function (p) { by[p.name] = (by[p.name] || 0) + p.pts; });
+      var best = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })[0];
+      return { team: r.team, name: best, pts: by[best], share: by[best] / r.pts };
+    });
+    mv.sort(function (a, b) { return b.share - a.share; });
+    put(host, [['Team', 'l c0'], ['Top Player', 'l'], ['Pts', ''], ['Share of Team Pts', '']],
+      mv.map(function (m) { return [[m.team, 'l c0 team'], [m.name, 'l'], [f2(m.pts), ''], [(m.share * 100).toFixed(0) + '%', '']]; }));
+    sec(host, 'Best single-week starters');
+    var top = all.slice().sort(function (a, b) { return b.pts - a.pts; }).slice(0, 10);
+    put(host, [['Player', 'l'], ['Team', 'l'], ['Wk', ''], ['Pts', '']],
+      top.map(function (p) { return [[p.name, 'l team'], [d.teams[p.t], 'l'], [String(p.n), ''], [f2(p.pts), '']]; }));
+    sec(host, 'Biggest busts (projected 10 or more)');
+    var bust = all.filter(function (p) { return p.proj >= 10; })
+      .sort(function (a, b) { return (a.pts - a.proj) - (b.pts - b.proj); }).slice(0, 10);
+    put(host, [['Player', 'l'], ['Team', 'l'], ['Wk', ''], ['Proj', ''], ['Pts', ''], ['Diff', '']],
+      bust.map(function (p) { return [[p.name, 'l team'], [d.teams[p.t], 'l'], [String(p.n), ''], [f2(p.proj), ''], [f2(p.pts), ''], [signed(p.pts - p.proj, f2), 'neg']]; }));
+    sec(host, 'Dead starters');
+    var dead = d.rows.map(function (r) {
+      var mine = all.filter(function (p) { return p.t === r.i; });
+      return { team: r.team, dead: mine.filter(function (p) { return p.pts < 2; }).length, n: mine.length };
+    });
+    dead.sort(function (a, b) { return b.dead - a.dead; });
+    put(host, [['Team', 'l c0'], ['Starters Under 2 Pts', ''], ['Of Starters', '']],
+      dead.map(function (t) { return [[t.team, 'l c0 team'], [String(t.dead), t.dead ? 'neg' : ''], [String(t.n), '']]; }));
+  }
+
+  function renderAwards() {
+    var host = $('x-awards'), x = luReady(host); if (!x) return;
+    var d = x.d, all = starters(x);
+    x.keys.slice().reverse().forEach(function (n, k) {
+      sec(host, 'Week ' + n, k === 0);
+      var ps = all.filter(function (p) { return p.n === n; });
+      var topP = ps.slice().sort(function (a, b) { return b.pts - a.pts; })[0];
+      var bustP = ps.filter(function (p) { return p.proj >= 10; })
+        .sort(function (a, b) { return (a.pts - a.proj) - (b.pts - b.proj); })[0];
+      var ms = d.weeksObj[n].map(function (m) {
+        var sa = num(m.as), sb = num(m.bs), wa = sa > sb;
+        return { w: wa ? m.a : m.b, l: wa ? m.b : m.a, ws: wa ? sa : sb, ls: wa ? sb : sa, mg: Math.abs(sa - sb) };
+      }).filter(function (m) { return m.mg > 0; });
+      var items = [['Top starter', topP.name + ' (' + d.teams[topP.t] + ')', f2(topP.pts)]];
+      if (bustP) items.push(['Bust', bustP.name + ' (' + d.teams[bustP.t] + ')', f2(bustP.pts) + ' vs ' + f2(bustP.proj) + ' proj']);
+      if (ms.length) {
+        var big = ms.slice().sort(function (a, b) { return b.mg - a.mg; })[0];
+        var small = ms.slice().sort(function (a, b) { return a.mg - b.mg; })[0];
+        var luck = ms.slice().sort(function (a, b) { return a.ws - b.ws; })[0];
+        var unl = ms.slice().sort(function (a, b) { return b.ls - a.ls; })[0];
+        items.push(['Blowout', d.teams[big.w] + ' over ' + d.teams[big.l], 'by ' + f2(big.mg)]);
+        items.push(['Closest game', d.teams[small.w] + ' over ' + d.teams[small.l], 'by ' + f2(small.mg)]);
+        items.push(['Lucky win', d.teams[luck.w] + ' beat ' + d.teams[luck.l], f2(luck.ws)]);
+        items.push(['Unlucky loss', d.teams[unl.l] + ' lost to ' + d.teams[unl.w], f2(unl.ls)]);
+      }
+      var box = el('div', 'matchups');
+      items.forEach(function (it) {
+        var row = el('div', 'prizeitem');
+        var pw = el('span', 'pw', it[0]); pw.style.minWidth = '6.4rem';
+        row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); row.appendChild(el('span', 'ps', it[2]));
+        box.appendChild(row);
+      });
+      host.appendChild(box);
+    });
+  }
+
+  function loadLU() {
+    fetch('/api/lineups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      LU = d && d.weeks && Object.keys(d.weeks).length ? d.weeks : null;
+      renderCurrent();
+    }).catch(function () {});
+  }
+
   // ---- Scores ----
   function getWeek(n) { return state.weeks[n] || defaultWeek(); }
 
@@ -632,7 +833,7 @@
   }
 
   // ---- Tabs and view mode ----
-  var RENDER = { table: renderTable, luck: renderLuck, scoring: renderScoring, trends: renderTrends, scores: renderScores, teams: renderTeams };
+  var RENDER = { table: renderTable, luck: renderLuck, scoring: renderScoring, trends: renderTrends, proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, scores: renderScores, teams: renderTeams };
   function renderCurrent() { RENDER[tab](); }
   function setTab(t) {
     tab = t;
@@ -672,7 +873,7 @@
   canWrite = false;
   $('tab-scores').hidden = true; $('tab-teams').hidden = true;
   $('p-scores').remove(); $('p-teams').remove();
-  TABS = ['table', 'luck', 'scoring', 'trends'];
+  TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards'];
   function load() {
     fetch('/api/state').then(function (r) {
       if (!r.ok) throw new Error('bad status');
@@ -682,6 +883,7 @@
       state.weeks = d.weeks || {};
       setStatus('Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
       renderCurrent();
+      loadLU();
     }).catch(function () { setStatus('Could not load scores. Try again soon.'); });
   }
   load();

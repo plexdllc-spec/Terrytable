@@ -173,6 +173,18 @@ def api_state():
     return jsonify(data)
 
 
+LINEUPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lineups.json")
+
+
+@app.route("/api/lineups")
+def api_lineups():
+    # Starter lineups per team per week, hand-entered from screenshots. Empty if the file is missing.
+    if os.path.exists(LINEUPS_FILE):
+        with open(LINEUPS_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    return jsonify(weeks={})
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")
