@@ -41,7 +41,8 @@ _cache = {"t": 0.0, "data": None}
 def _token_request(data):
     basic = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
     r = requests.post(TOKEN_URL, data=data, headers={"Authorization": f"Basic {basic}"}, timeout=20)
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"Yahoo token {r.status_code}: {r.text[:300]}")
     return r.json()
 
 
@@ -63,7 +64,8 @@ def access_token():
 def yahoo_get(path):
     r = requests.get(API + path, params={"format": "json"},
                      headers={"Authorization": f"Bearer {access_token()}"}, timeout=30)
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"Yahoo {r.status_code} for {path}: {r.text[:400]} | www-auth: {r.headers.get('WWW-Authenticate', '')[:200]}")
     return r.json()
 
 
