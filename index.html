@@ -142,6 +142,7 @@
     <button role="tab" id="tab-pos" aria-selected="false" data-tab="pos">Positions</button>
     <button role="tab" id="tab-players" aria-selected="false" data-tab="players">Players</button>
     <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
+    <button role="tab" id="tab-stacks" aria-selected="false" data-tab="stacks">Stacks</button>
     <button role="tab" id="tab-scores" aria-selected="false" data-tab="scores">Scores</button>
     <button role="tab" id="tab-teams" aria-selected="false" data-tab="teams">Teams</button>
   </nav>
@@ -209,6 +210,11 @@
     <div id="x-awards"></div>
   </section>
 
+  <section id="p-stacks" hidden>
+    <p class="cap" style="margin-top:0">Starters only, grouped by NFL team. A stack is 3 or more starters from the same NFL team in one lineup, so one bad game hits several slots at once.</p>
+    <div id="x-stacks"></div>
+  </section>
+
   <section id="p-scores" hidden>
     <div class="bar" style="margin-bottom:12px">
       <div class="weeks" id="weeks" role="group" aria-label="Week"></div>
@@ -226,7 +232,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'scores', 'teams'];
+  var TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'scores', 'teams'];
   var state = { teams: [], weeks: {} };
   var week = 1, tab = 'table', showWeeks = false, canWrite = true, db = null, ref = null, selTeam = null;
   var $ = function (id) { return document.getElementById(id); };
@@ -574,7 +580,7 @@
     x.keys.forEach(function (n) {
       x.d.rows.forEach(function (r) {
         LU[n][r.i].forEach(function (p) {
-          all.push({ t: r.i, n: n, name: p.p, s: p.s, proj: p.proj, pts: p.pts, f: p.f || '' });
+          all.push({ t: r.i, nfl: p.t, n: n, name: p.p, s: p.s, proj: p.proj, pts: p.pts, f: p.f || '' });
         });
       });
     });
@@ -717,6 +723,47 @@
     });
   }
 
+  function renderStacks() {
+    var host = $('x-stacks'), x = luReady(host); if (!x) return;
+    var d = x.d, all = starters(x);
+    var rows = d.rows.map(function (r) {
+      var cnt = {}, pts = {}, wk = {}, big = 0;
+      all.filter(function (p) { return p.t === r.i; }).forEach(function (p) {
+        cnt[p.nfl] = (cnt[p.nfl] || 0) + 1; pts[p.nfl] = (pts[p.nfl] || 0) + p.pts;
+        var k = p.n + '|' + p.nfl; wk[k] = (wk[k] || 0) + 1;
+      });
+      Object.keys(wk).forEach(function (k) { if (wk[k] >= 3) big++; });
+      var top = Object.keys(cnt).sort(function (a, b) { return (cnt[b] - cnt[a]) || (pts[b] - pts[a]); })[0];
+      return { team: r.team, nfl: top, c: cnt[top], pts: pts[top], share: pts[top] / r.pts, big: big };
+    });
+    rows.sort(function (a, b) { return (b.share - a.share); });
+    sec(host, 'Most-used NFL team per lineup', true);
+    put(host, [['Team', 'l c0'], ['NFL Team', 'l'], ['Starter Slots', ''], ['Pts', ''], ['Share of Team Pts', ''], ['Weeks With 3+ Stack', '']],
+      rows.map(function (m) {
+        return [[m.team, 'l c0 team'], [m.nfl, 'l'], [m.c + ' of ' + (x.keys.length * 8), ''], [f2(m.pts), ''], [(m.share * 100).toFixed(0) + '%', ''], [String(m.big), '']];
+      }));
+    sec(host, 'Biggest stacks (3 or more from one NFL team)');
+    var groups = {};
+    all.forEach(function (p) {
+      var k = p.n + '|' + p.t + '|' + p.nfl;
+      (groups[k] = groups[k] || { n: p.n, t: p.t, nfl: p.nfl, c: 0, pts: 0, names: [] });
+      groups[k].c++; groups[k].pts += p.pts; groups[k].names.push(p.name);
+    });
+    var st = Object.keys(groups).map(function (k) { return groups[k]; }).filter(function (g) { return g.c >= 3; });
+    st.sort(function (a, b) { return (b.c - a.c) || (b.pts - a.pts); });
+    if (!st.length) host.appendChild(el('p', 'cap', 'No 3-player stacks yet.'));
+    else put(host, [['Wk', ''], ['Team', 'l'], ['NFL Team', 'l'], ['Players', ''], ['Pts', ''], ['Who', 'l']],
+      st.slice(0, 10).map(function (g) {
+        return [[String(g.n), ''], [d.teams[g.t], 'l team'], [g.nfl, 'l'], [String(g.c), ''], [f2(g.pts), ''], [g.names.join(', '), 'l']];
+      }));
+    sec(host, 'NFL teams across the league (top 10 by starter points)');
+    var by = {};
+    all.forEach(function (p) { (by[p.nfl] = by[p.nfl] || { c: 0, pts: 0 }); by[p.nfl].c++; by[p.nfl].pts += p.pts; });
+    var lg = Object.keys(by).sort(function (a, b) { return by[b].pts - by[a].pts; }).slice(0, 10);
+    put(host, [['NFL Team', 'l'], ['Starter Slots', ''], ['Pts', ''], ['Pts per Slot', '']],
+      lg.map(function (k) { return [[k, 'l team'], [String(by[k].c), ''], [f2(by[k].pts), ''], [f1(by[k].pts / by[k].c), '']]; }));
+  }
+
   function loadLU() {
     fetch('/api/lineups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       LU = d && d.weeks && Object.keys(d.weeks).length ? d.weeks : null;
@@ -833,7 +880,7 @@
   }
 
   // ---- Tabs and view mode ----
-  var RENDER = { table: renderTable, luck: renderLuck, scoring: renderScoring, trends: renderTrends, proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, scores: renderScores, teams: renderTeams };
+  var RENDER = { table: renderTable, luck: renderLuck, scoring: renderScoring, trends: renderTrends, proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, scores: renderScores, teams: renderTeams };
   function renderCurrent() { RENDER[tab](); }
   function setTab(t) {
     tab = t;
@@ -873,7 +920,7 @@
   canWrite = false;
   $('tab-scores').hidden = true; $('tab-teams').hidden = true;
   $('p-scores').remove(); $('p-teams').remove();
-  TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards'];
+  TABS = ['table', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
   function load() {
     fetch('/api/state').then(function (r) {
       if (!r.ok) throw new Error('bad status');
