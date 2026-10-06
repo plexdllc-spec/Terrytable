@@ -361,6 +361,19 @@
   .rrow.lead .rn { color: var(--on-gold); text-shadow: none; }
   .rrow .rv { position: absolute; right: 6px; top: 0; line-height: 24px; font-weight: 700; font-size: .92rem; color: var(--ink); }
   .rcap { color: var(--muted); font-size: .92rem; min-height: 1.4em; margin-top: 8px; }
+  .cctl { display: flex; gap: 8px; margin: 0 0 8px; }
+  .cctl button { font: 600 .85rem var(--f-body); padding: 4px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+  .cctl button:hover { border-color: var(--gold); color: var(--ink); }
+  details.csec { border: 1px solid var(--line); background: rgba(18, 6, 10, .55); margin: 0 0 10px; }
+  details.csec > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-left: 3px solid var(--gold); }
+  details.csec > summary::-webkit-details-marker { display: none; }
+  details.csec > summary .ph { margin: 0; flex: 1; font-size: 1.3rem; }
+  details.csec > summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); transform: rotate(45deg); transition: transform .2s; margin-right: 4px; flex: none; }
+  details.csec[open] > summary { background: var(--panel2); }
+  details.csec[open] > summary::after { transform: rotate(-135deg); }
+  details.csec > .cbody { padding: 6px 14px 14px; }
+  details.csec > .cbody > .chartbox:first-child, details.csec > .cbody > .scroll:first-child { margin-top: 4px; }
+  @media (max-width: 700px) { details.csec > .cbody { padding: 4px 0 12px; } details.csec > .cbody > .cap, details.csec > .cbody > p { padding: 0 2px; } }
   .nteam { border: 1px solid var(--line); background: var(--panel); margin: 0 0 8px; }
   .nteam summary { cursor: pointer; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; list-style: none; border-left: 3px solid var(--gold); }
   .nteam summary::-webkit-details-marker { display: none; }
@@ -465,7 +478,6 @@
     <button role="tab" id="tab-hof" aria-selected="false" data-tab="hof">Hall of Fame</button>
     <button role="tab" id="tab-profiles" aria-selected="false" data-tab="profiles">Managers</button>
     <button role="tab" id="tab-seasons" aria-selected="false" data-tab="seasons">Seasons</button>
-    <button role="tab" id="tab-prizes" aria-selected="false" data-tab="prizes">Prizes</button>
     <button role="tab" id="tab-recap" aria-selected="false" data-tab="recap">Recap</button>
     <button role="tab" id="tab-share" aria-selected="false" data-tab="share">Share</button>
   </nav>
@@ -578,7 +590,6 @@
     <section id="p-races" hidden><div id="x-races"></div></section>
     <section id="p-hof" hidden><div id="x-hof"></div></section>
     <section id="p-profiles" hidden><div id="x-profiles"></div></section>
-    <section id="p-prizes" hidden><div id="x-prizes"></div></section>
     <section id="p-recap" hidden><div id="x-recap"></div></section>
     <section id="p-share" hidden><div id="x-share"></div></section>
 
@@ -607,7 +618,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons', 'hof', 'profiles', 'prizes', 'recap', 'share', 'races'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons', 'hof', 'profiles', 'recap', 'share', 'races'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -618,9 +629,12 @@
   introUntil = performance.now() + (ANIM ? 3700 : 0);
   function introWait() { return Math.max(0, introUntil - performance.now()); }
   function onView(node, fn) {
-    if (!ANIM || !('IntersectionObserver' in window)) { fn(); return; }
-    var io = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { io.disconnect(); fn(); } }, { threshold: 0.15 });
-    io.observe(node);
+    if (!ANIM) { fn(); return; }
+    var t = setInterval(function () {
+      if (!document.body.contains(node)) { clearInterval(t); return; }
+      var r = node.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && r.top < window.innerHeight * 0.92 && r.bottom > 0) { clearInterval(t); fn(); }
+    }, 250);
   }
 
   state.teams = (function () { var a = []; for (var i = 0; i < N; i++) a.push('Team ' + (i + 1)); return a; })();
@@ -2604,10 +2618,51 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
-    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, hof: renderHof, profiles: renderProfiles, prizes: renderPrizes, recap: renderRecap, share: renderShare, races: renderRaces };
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, hof: renderHof, profiles: renderProfiles, recap: renderRecap, share: renderShare, races: renderRaces };
+
+  // ---- Collapsible sections: every .ph heading folds the content under it ----
+  var OPENSEC = {}, csecBusy = false, csecQueued = false;
+  function collapsify() {
+    csecBusy = true;
+    try {
+      var secs = document.querySelectorAll('main section[id^="p-"]');
+      Array.prototype.forEach.call(secs, function (sc) {
+        if (sc.hidden) return;
+        var tabId = sc.id.slice(2), heads = Array.prototype.filter.call(sc.querySelectorAll('.ph'), function (h) { return !h.closest('details.csec'); });
+        if (!heads.length) return;
+        var firstInTab = !sc.querySelector('details.csec');
+        heads.forEach(function (h, idx) {
+          var parent = h.parentNode, det = el('details', 'csec'), sm = el('summary'), body = el('div', 'cbody'), nodes = [], n = h.nextSibling, key = tabId + ':' + h.textContent;
+          while (n && !(n.nodeType === 1 && n.classList.contains('ph'))) { nodes.push(n); n = n.nextSibling; }
+          parent.insertBefore(det, h);
+          sm.appendChild(h); det.appendChild(sm); nodes.forEach(function (x) { body.appendChild(x); }); det.appendChild(body);
+          det.open = key in OPENSEC ? OPENSEC[key] : (firstInTab && idx === 0);
+          det.addEventListener('toggle', function () { OPENSEC[key] = det.open; });
+        });
+        var all = sc.querySelectorAll('details.csec');
+        if (all.length >= 3 && !sc.querySelector('.cctl')) {
+          var bar = el('div', 'cctl'), a = el('button', '', 'Expand all'), c = el('button', '', 'Collapse all');
+          a.addEventListener('click', function () { sc.querySelectorAll('details.csec').forEach(function (d) { d.open = true; }); });
+          c.addEventListener('click', function () { sc.querySelectorAll('details.csec').forEach(function (d) { d.open = false; }); });
+          bar.appendChild(a); bar.appendChild(c);
+          var first = sc.querySelector('details.csec'); first.parentNode.insertBefore(bar, first);
+        }
+      });
+    } finally { csecBusy = false; }
+  }
+  (function () {
+    var m = document.querySelector('main');
+    if (!m || !window.MutationObserver) return;
+    new MutationObserver(function () {
+      if (csecBusy || csecQueued) return;
+      csecQueued = true;
+      requestAnimationFrame(function () { csecQueued = false; collapsify(); });
+    }).observe(m, { childList: true, subtree: true });
+  })();
+
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'playoffs', 'odds', 'prizes']],
+    ['standings', ['table', 'playoffs', 'odds']],
     ['week', ['outlook', 'matchups', 'recap', 'proj', 'news']],
     ['teams', ['power', 'analytics', 'races', 'trends', 'scoring']],
     ['players', ['players', 'pos', 'stacks']],
