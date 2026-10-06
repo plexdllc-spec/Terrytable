@@ -498,6 +498,7 @@
       <p class="meta" style="margin:8px 0 0">Top 6 make the playoffs. The gold line marks the cutoff. 1st and 2nd get a bye.</p>
       <div class="scroll std"><table id="t"></table></div>
       <div id="cards"></div>
+      <div id="pbase"></div>
     </section>
 
     <section id="p-playoffs" hidden>
@@ -849,9 +850,38 @@
   }
 
   // ---- Standings ----
+  function pbaseRows(kk, d) {
+    if (!HW || !Object.keys(HW).length) return null;
+    var all = [];
+    Object.keys(HW).sort().forEach(function (y) {
+      var ms = Object.keys(HW[y]), arr = ms.map(function (m) {
+        var lp = 0, lpk = 0, pf = 0;
+        for (var k = 0; k < 14; k++) { lp += HW[y][m].lp[k]; if (k < kk) lpk += HW[y][m].lp[k]; pf += HW[y][m].p[k]; }
+        return { lp: lp, lpk: lpk, pf: pf };
+      });
+      arr.sort(function (a, b) { return (b.lp - a.lp) || (b.pf - a.pf); });
+      arr.forEach(function (r, k) { r.rank = k + 1; all.push(r); });
+    });
+    return d.rows.map(function (r) {
+      var cmp = all.filter(function (x) { return Math.abs(x.lpk - r.lp) <= 1; }), po = 0, by = 0;
+      cmp.forEach(function (x) { if (x.rank <= 6) po++; if (x.rank <= 2) by++; });
+      return { team: r.team, lp: r.lp, n: cmp.length, po: cmp.length ? po / cmp.length : null, by: cmp.length ? by / cmp.length : null };
+    });
+  }
+  function renderPbase(d, upTo) {
+    var host = $('pbase'); host.textContent = '';
+    if (upTo || d.sample || !d.keys.length) return;
+    if (!HW) { loadHW(function () { if (tab === 'table') renderPbase(getData(), false); }); return; }
+    var kk = d.keys.length, rows = pbaseRows(kk, d);
+    if (!rows) return;
+    sec(host, 'Playoff odds from history, after Week ' + kk, true);
+    put(host, [['Team', 'l'], ['LP', ''], ['Made playoffs', '']],
+      rows.map(function (r) { return [[shortName(r.team, 15), 'l team'], [String(r.lp), ''], [r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '')]]; }));
+  }
   function renderTable(upTo) {
     var d = getData(upTo), rows = d.rows, keys = d.keys;
     lastD = d;
+    renderPbase(d, upTo);
     var snap = snapshot(), first = !entered;
     var smn = Infinity, smx = -Infinity;
     rows.forEach(function (r) { keys.forEach(function (n) { smn = Math.min(smn, r.wk[n].pts); smx = Math.max(smx, r.wk[n].pts); }); });
@@ -2756,12 +2786,7 @@
     put(host, [['Season', 'l'], ['2nd place LP', ''], ['6th place LP', '']], crow);
     if (!d.sample && d.keys.length) {
       sec(host, 'Playoff base rate after Week ' + kk);
-      var all = []; SS.forEach(function (q) { q.arr.forEach(function (r) { all.push(r); }); });
-      var brow = d.rows.map(function (r) {
-        var cmp = all.filter(function (x) { return Math.abs(x.lpk - r.lp) <= 1; }), po = 0, by = 0;
-        cmp.forEach(function (x) { if (x.rank <= 6) po++; if (x.rank <= 2) by++; });
-        return { team: MGR26[r.team] || r.team, lp: r.lp, n: cmp.length, po: cmp.length ? po / cmp.length : null, by: cmp.length ? by / cmp.length : null };
-      });
+      var brow = pbaseRows(kk, d).map(function (r) { r.team = MGR26[r.team] || r.team; return r; });
       put(host, [['Manager', 'l'], ['LP', ''], ['Similar', ''], ['Playoffs', ''], ['Bye', '']],
         brow.map(function (r) { return [[r.team, 'l team'], [String(r.lp), ''], [String(r.n), ''], [r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '')], [r.by === null ? 'n/a' : Math.round(r.by * 100) + '%', '']]; }));
     }
