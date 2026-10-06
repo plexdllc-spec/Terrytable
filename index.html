@@ -85,6 +85,8 @@
   /* Tabs */
   nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 6px 6px; }
   nav::-webkit-scrollbar { display: none; }
+  /* Wide screens: wrap the tabs onto more rows so none are hidden off the edge. Phones keep the swipe row. */
+  @media (min-width: 761px) { nav { flex-wrap: wrap; overflow-x: visible; gap: 8px 6px; } nav button { padding: 6px 18px; font-size: 1.15rem; } }
   nav button { position: relative; isolation: isolate; font: 700 1.25rem var(--f-disp); font-style: italic; letter-spacing: .02em; white-space: nowrap; background: none; color: var(--muted); border: 0; padding: 8px 22px; cursor: pointer; transition: color .2s; }
   nav button::before { content: ""; position: absolute; inset: 0; z-index: -1; transform: skewX(-14deg); background: transparent; border: 1px solid var(--line); transition: background .25s, border-color .25s; }
   nav button:hover::before { background: var(--panel2); border-color: var(--gold); }
@@ -322,6 +324,22 @@
     .brand .ball { width: 52px; }
     .l3 { padding: 14px 34px 14px 18px; }
   }
+  .mugrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 14px; }
+  .mu { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--gold); padding: 12px 14px; }
+  .mu-h { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: baseline; font: 700 1.25rem var(--f-disp); }
+  .mu-h .l { overflow-wrap: anywhere; }
+  .mu-h .r { text-align: right; overflow-wrap: anywhere; }
+  .mu-h .l::before, .mu-h .r::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; background: var(--gold); transform: skewX(-20deg); }
+  .mu-h .r::before { background: var(--garnet-hi); }
+  .mu-h .v { color: var(--muted); font: 500 .9rem var(--f-body); }
+  .wp { display: flex; height: 10px; overflow: hidden; background: var(--garnet-hi); margin: 10px 0 8px; }
+  .wp i { display: block; background: var(--gold); }
+  .mu-r { display: grid; grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr); gap: 8px; font-size: .95rem; padding-top: 4px; margin-top: 4px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .mu-r span:nth-child(2) { text-align: center; color: var(--muted); font-size: .85rem; }
+  .mu-r span:last-child { text-align: right; }
+  .mu-n { color: var(--gold-soft); font-size: .88rem; margin-top: 6px; }
+  .dot2 { fill: var(--muted); opacity: .5; }
+  .nowd { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
     #splash { display: none; }
@@ -378,7 +396,10 @@
   <nav role="tablist" aria-label="Sections">
     <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Standings</button>
     <button role="tab" id="tab-playoffs" aria-selected="false" data-tab="playoffs">Playoff picture</button>
+    <button role="tab" id="tab-odds" aria-selected="false" data-tab="odds">Odds</button>
+    <button role="tab" id="tab-outlook" aria-selected="false" data-tab="outlook">Outlook</button>
     <button role="tab" id="tab-analytics" aria-selected="false" data-tab="analytics">Analytics</button>
+    <button role="tab" id="tab-power" aria-selected="false" data-tab="power">Power</button>
     <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-luck" aria-selected="false" data-tab="luck">Luck</button>
     <button role="tab" id="tab-scoring" aria-selected="false" data-tab="scoring">Scoring</button>
@@ -490,13 +511,25 @@
       <p class="cap" style="margin-top:0">Starters only, grouped by NFL team. A stack is 3 or more starters from the same NFL team in one lineup, so one bad game hits several slots at once.</p>
       <div id="x-stacks"></div>
     </section>
+
+    <section id="p-odds" hidden>
+      <div id="x-odds"></div>
+    </section>
+
+    <section id="p-outlook" hidden>
+      <div id="x-outlook"></div>
+    </section>
+
+    <section id="p-power" hidden>
+      <div id="x-power"></div>
+    </section>
   </main>
 </div>
 
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'analytics', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -1033,6 +1066,7 @@
   function put(host, heads, rows) {
     var w = el('div', 'scroll'), t = el('table');
     fill(t, heads, rows); w.appendChild(t); host.appendChild(w);
+    return t;
   }
   function sec(host, title, first) {
     var h = el('div', 'ph', title);
@@ -1160,6 +1194,7 @@
     dead.sort(function (a, b) { return b.dead - a.dead; });
     put(host, [['Team', 'l c0'], ['Starters Under 2 Pts', ''], ['Of Starters', '']],
       dead.map(function (t) { return [[t.team, 'l c0 team'], [String(t.dead), t.dead ? 'neg' : ''], [String(t.n), '']]; }));
+    hotCold(host, all, d);
   }
 
   function renderAwards() {
@@ -1239,13 +1274,326 @@
       lg.map(function (k) { return [[k, 'l team'], [String(by[k].c), ''], [f2(by[k].pts), ''], [f1(by[k].pts / by[k].c), '']]; }));
   }
 
+  // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
+  var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
+  var LUTABS = ['proj', 'pos', 'players', 'awards', 'stacks', 'outlook', 'odds', 'power'];
+  function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
+  function f0(x) { return x.toFixed(0); }
+  function phi(z) {
+    var t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z / 2);
+    return z >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+  }
+  function mulberry32(a) {
+    return function () {
+      var t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function gauss(r) { var u = 1 - r(), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function pctile(sorted, p) { return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))]; }
+  function shortName(s, n) { return s.length > n ? s.slice(0, n - 1) + '.' : s; }
+  function pctText(p) { return p < 0.005 ? '<1%' : (p > 0.995 ? '>99%' : Math.round(p * 100) + '%'); }
+
+  function histOf(x) {
+    var H = { ks: x.keys, act: {}, proj: {} };
+    x.d.rows.forEach(function (r) {
+      H.act[r.i] = x.keys.map(function (n) { return r.wk[n].pts; });
+      H.proj[r.i] = x.keys.map(function (n) { return projOf(n, r.i); });
+    });
+    return H;
+  }
+
+  // k is the weight given to a team's habit of beating or missing its projection (empirical Bayes: 0 means it looks like luck).
+  function fitModel(H, m) {
+    var ids = Object.keys(H.act), bias = {}, means = [], within = 0, ss = 0, cnt = 0;
+    ids.forEach(function (i) {
+      var r = [], j; for (j = 0; j < m; j++) r.push(H.act[i][j] - H.proj[i][j]);
+      var mu = mean(r); bias[i] = mu; means.push(mu);
+      r.forEach(function (v) { ss += v * v; cnt++; });
+      if (m > 1) { var q = 0; r.forEach(function (v) { q += (v - mu) * (v - mu); }); within += q / (m - 1); }
+    });
+    var k = 0;
+    if (m > 1) {
+      within /= ids.length;
+      var mm = mean(means), v = 0; means.forEach(function (u) { v += (u - mm) * (u - mm); }); v /= (ids.length - 1);
+      var tau2 = Math.max(v - within / m, 0);
+      k = tau2 > 0 ? tau2 / (tau2 + within / m) : 0;
+    }
+    return { k: k, sigma: Math.sqrt(ss / cnt), bias: bias };
+  }
+
+  function fillOf(rows) {
+    var s = 0, holes = 0;
+    rows.forEach(function (p) { if (p.proj > 0) s += p.proj; else { s += REPL; holes++; } });
+    return { proj: s, holes: holes };
+  }
+
+  function backtest(H) {
+    var m = H.ks.length, out = { n: 0, y: 0, a: 0, b: 0 }, j;
+    for (j = 2; j < m; j++) {
+      var fm = fitModel(H, j);
+      Object.keys(H.act).forEach(function (i) {
+        var act = H.act[i][j], y = H.proj[i][j], adj = y + fm.k * fm.bias[i], ws = 0, sw = 0;
+        H.act[i].slice(0, j).forEach(function (v, q) { ws += (q + 1) * v; sw += q + 1; });
+        out.y += Math.abs(act - y); out.a += Math.abs(act - adj); out.b += Math.abs(act - (0.65 * adj + 0.35 * ws / sw)); out.n++;
+      });
+    }
+    if (out.n) { out.y /= out.n; out.a /= out.n; out.b /= out.n; }
+    return out;
+  }
+
+  function simulate(x, o) {
+    var N = 5000, ids = o.ids, T = ids.length, sigma = o.fm.sigma, r = mulberry32(20261006);
+    var start = Math.max.apply(null, x.d.keys) + 1, cur = {}, sched = (UP && UP.schedule) || {};
+    x.d.rows.forEach(function (q) { cur[q.i] = { lp: q.lp, pts: q.pts }; });
+    var res = { N: N, start: start, pos: {}, lp: {}, cut6: [], cut2: [] };
+    ids.forEach(function (i) { res.pos[i] = []; for (var k = 0; k < T; k++) res.pos[i].push(0); res.lp[i] = []; });
+    for (var s = 0; s < N; s++) {
+      var lp = {}, pts = {};
+      ids.forEach(function (i) { lp[i] = cur[i].lp; pts[i] = cur[i].pts; });
+      for (var w = start; w <= WEEKS; w++) {
+        var sc = {}, tot = 0;
+        ids.forEach(function (i) {
+          var mu = (o.up && w === o.up.week && o.f5[i] !== undefined) ? o.f5[i] : o.mu[i];
+          sc[i] = mu + sigma * gauss(r); tot += sc[i];
+        });
+        var avg = tot / T, pairs = sched[w], q;
+        if (!pairs) {
+          var sh = ids.slice();
+          for (q = sh.length - 1; q > 0; q--) { var z = Math.floor(r() * (q + 1)), tmp = sh[q]; sh[q] = sh[z]; sh[z] = tmp; }
+          pairs = []; for (q = 0; q < sh.length; q += 2) pairs.push([sh[q], sh[q + 1]]);
+        }
+        pairs.forEach(function (p) {
+          if (sc[p[0]] > sc[p[1]]) lp[p[0]] += 2; else if (sc[p[1]] > sc[p[0]]) lp[p[1]] += 2;
+        });
+        ids.forEach(function (i) { if (sc[i] > avg) lp[i] += 1; pts[i] += sc[i]; });
+      }
+      var order = ids.slice().sort(function (a, b) { return (lp[b] - lp[a]) || (pts[b] - pts[a]); });
+      order.forEach(function (i, k) { res.pos[i][k]++; res.lp[i].push(lp[i]); });
+      res.cut6.push(lp[order[5]]); res.cut2.push(lp[order[1]]);
+    }
+    return res;
+  }
+
+  function getOutlook(x) {
+    var key = x.keys.join(',') + '|' + (UP ? UP.week : '');
+    if (OUT && OUT.key === key) return OUT;
+    var H = histOf(x), fm = fitModel(H, H.ks.length);
+    var o = { key: key, H: H, fm: fm, last: x.keys[x.keys.length - 1], ids: x.d.rows.map(function (r) { return r.i; }), f5: {}, fill: {}, mu: {}, sos: {} };
+    o.up = UP && UP.lineups && UP.week > Math.max.apply(null, x.d.keys) ? UP : null;
+    o.ids.forEach(function (i) {
+      var arr = H.proj[i].slice();
+      if (o.up && o.up.lineups[i]) { var f = fillOf(o.up.lineups[i]); o.fill[i] = f; arr.push(f.proj); o.f5[i] = f.proj + fm.k * fm.bias[i]; }
+      o.mu[i] = mean(arr) + fm.k * fm.bias[i];
+    });
+    o.bt = backtest(H);
+    o.sim = simulate(x, o);
+    var opp = {}, lgMu = mean(o.ids.map(function (i) { return o.mu[i]; })), sched = (UP && UP.schedule) || {};
+    o.ids.forEach(function (i) { opp[i] = []; });
+    for (var w = o.sim.start; w <= WEEKS; w++) {
+      (sched[w] || []).forEach(function (p) { opp[p[0]].push(o.mu[p[1]]); opp[p[1]].push(o.mu[p[0]]); });
+    }
+    o.ids.forEach(function (i) { o.sos[i] = opp[i].length ? mean(opp[i]) - lgMu : null; });
+    OUT = o; return o;
+  }
+
+  function renderOutlook() {
+    var host = $('x-outlook'), x = luReady(host); if (!x) return;
+    var o = getOutlook(x), d = x.d, ids = o.ids;
+    if (!o.up) { host.appendChild(el('p', 'cap', 'The upcoming week data is out of date. Send the next week preview to refresh it.')); return; }
+    var up = o.up, sg = o.fm.sigma, sm = sg * Math.SQRT2, T = ids.length;
+    var fbar = mean(ids.map(function (i) { return o.f5[i]; }));
+    var cap = el('p', 'cap', 'Week ' + up.week + ' forecast. It starts from the Yahoo projection for each lineup. A starter projected at 0 (bye or out) is replaced with ' + REPL + ', a typical low-end starter. Likely range covers about 80% of outcomes, using the typical Yahoo miss so far (' + f1(sg) + ' points per team).');
+    cap.style.marginTop = '0'; host.appendChild(cap);
+    var bt = o.bt;
+    if (bt.n) host.appendChild(el('p', 'cap', 'Backtest on ' + bt.n + ' team-weeks: Yahoo alone missed by ' + f1(bt.y) + ' points on average. Adding a team-history adjustment gave ' + f1(bt.a) + '. Blending in recent scoring gave ' + f1(bt.b) + '. Weight on team history now: ' + f2(o.fm.k) + ' (0 means beating or missing projections looks like luck so far). Expect near coin flips unless the gap is large.'));
+    var box = el('div', 'mugrid');
+    up.matchups.forEach(function (m) {
+      var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
+      var elp = function (i, p) { return 2 * p + phi((o.f5[i] - fbar) / (sg * Math.sqrt((T - 1) / T))); };
+      var c = el('div', 'mu'), h = el('div', 'mu-h');
+      h.appendChild(el('span', 'l', d.teams[a])); h.appendChild(el('span', 'v', 'vs')); h.appendChild(el('span', 'r', d.teams[b]));
+      c.appendChild(h);
+      var bar = el('div', 'wp'), seg = el('i'); seg.style.width = (pa * 100).toFixed(1) + '%'; bar.appendChild(seg); c.appendChild(bar);
+      var row = function (lbl, l, r) { var e = el('div', 'mu-r'); e.appendChild(el('span', '', l)); e.appendChild(el('span', '', lbl)); e.appendChild(el('span', '', r)); c.appendChild(e); };
+      row('Win chance', Math.round(pa * 100) + '%', Math.round((1 - pa) * 100) + '%');
+      row('Yahoo win chance', m.wa + '%', (100 - m.wa) + '%');
+      row('Forecast', f1(fa), f1(fb));
+      row('Likely range', f0(fa - 1.2816 * sg) + ' to ' + f0(fa + 1.2816 * sg), f0(fb - 1.2816 * sg) + ' to ' + f0(fb + 1.2816 * sg));
+      row('Yahoo projection', f2(m.pa), f2(m.pb));
+      row('Exp league pts', f1(elp(a, pa)), f1(elp(b, 1 - pa)));
+      [a, b].forEach(function (i) {
+        if (o.fill[i] && o.fill[i].holes) c.appendChild(el('div', 'mu-n', d.teams[i] + ': ' + o.fill[i].holes + ' empty slot' + (o.fill[i].holes > 1 ? 's' : '') + ' filled at ' + REPL));
+      });
+      box.appendChild(c);
+    });
+    host.appendChild(box);
+    sec(host, 'Lineup watch');
+    var watch = [];
+    ids.forEach(function (i) {
+      (up.lineups[i] || []).forEach(function (p) {
+        if (p.f || p.proj === 0) watch.push({ team: d.teams[i], p: p, rk: (p.f === 'BYE' || p.f === 'O' || p.f === 'IR' || p.proj === 0) ? 0 : 1 });
+      });
+    });
+    watch.sort(function (a, b) { return a.rk - b.rk; });
+    host.appendChild(el('p', 'cap', 'O is out, Q is questionable, IR is injured reserve, BYE is off this week. Starters at 0 projected will likely be swapped before kickoff.'));
+    put(host, [['Team', 'l c0'], ['Player', 'l'], ['Slot', ''], ['Status', ''], ['Yahoo Proj', '']],
+      watch.map(function (w) { return [[w.team, 'l c0 team'], [w.p.p, 'l'], [w.p.s, ''], [w.p.f || 'Zero proj', w.rk ? '' : 'neg'], [f2(w.p.proj), '']]; }));
+  }
+
+  function rangeChart(host, info, cut6, cut2) {
+    var W = 480, rowH = 24, T = 22, B = 30, L = 150, R = 14, H = T + B + rowH * info.length, pw = W - L - R, max = 42;
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
+    var x = function (v) { return L + pw * v / max; }, t;
+    for (t = 0; t <= max; t += 6) {
+      svg.appendChild(sv('line', { x1: x(t), x2: x(t), y1: T, y2: H - B, 'class': 'grid' }));
+      svg.appendChild(sv('text', { x: x(t), y: H - 12, 'text-anchor': 'middle', 'class': 'ax' }, String(t)));
+    }
+    [[cut6, '6th'], [cut2, '2nd']].forEach(function (c) {
+      svg.appendChild(sv('line', { x1: x(c[0]), x2: x(c[0]), y1: T, y2: H - B, 'class': 's-avg' }));
+      svg.appendChild(sv('text', { x: x(c[0]), y: T - 7, 'text-anchor': 'middle', 'class': 'ax' }, c[1]));
+    });
+    info.forEach(function (r, k) {
+      var y = T + rowH * k + rowH / 2;
+      svg.appendChild(sv('text', { x: L - 8, y: y + 4, 'text-anchor': 'end', 'class': 'ax' }, shortName(r.team, 22)));
+      svg.appendChild(sv('line', { x1: x(r.lo), x2: x(r.hi), y1: y, y2: y, 'class': 's-sel' }));
+      svg.appendChild(sv('circle', { cx: x(r.med), cy: y, r: 4.5, 'class': 'dot' }));
+      svg.appendChild(sv('circle', { cx: x(r.now), cy: y, r: 3, 'class': 'nowd' }));
+    });
+    host.appendChild(svg);
+  }
+
+  function renderOdds() {
+    var host = $('x-odds'), x = luReady(host); if (!x) return;
+    var o = getOutlook(x), s = o.sim, d = x.d, ids = o.ids, cur = {};
+    d.rows.forEach(function (q) { cur[q.i] = q; });
+    var info = ids.map(function (i) {
+      var lp = s.lp[i].slice().sort(function (a, b) { return a - b; }), pr = 0, by = 0;
+      s.pos[i].forEach(function (c, k) { if (k < 6) pr += c; if (k < 2) by += c; });
+      return { i: i, team: d.teams[i], rank: cur[i].rank, now: cur[i].lp, med: pctile(lp, 0.5), lo: pctile(lp, 0.1), hi: pctile(lp, 0.9), po: pr / s.N, bye: by / s.N, sos: o.sos[i] };
+    });
+    info.sort(function (a, b) { return (b.po - a.po) || (b.med - a.med) || (a.rank - b.rank); });
+    var c6 = s.cut6.slice().sort(function (a, b) { return a - b; }), c2 = s.cut2.slice().sort(function (a, b) { return a - b; });
+    var m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
+    var cap = el('p', 'cap', 'Simulation of weeks ' + s.start + ' to ' + WEEKS + ' (' + s.N + ' runs) on the real schedule. Each team scores around its average Yahoo projection with typical Yahoo-sized misses. Rosters and injuries are held as they look now' + (o.up ? ', with week ' + o.up.week + ' using the forecast on the Outlook tab' : '') + '. Median finish: 6th place ends near ' + m6 + ' league pts, 2nd place near ' + m2 + '.');
+    cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'Playoff and bye odds', true);
+    put(host, [['#', 'c1'], ['Team', 'l c2'], ['Now', ''], ['LP', ''], ['Median Final LP', ''], ['Playoffs', ''], ['Bye', ''], ['Schedule', '']],
+      info.map(function (r, k) {
+        return [[String(k + 1), 'c1'], [r.team, 'l c2 team'], [String(r.rank), ''], [String(r.now), ''], [String(r.med), ''],
+          [pctText(r.po), r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : '')], [pctText(r.bye), r.bye >= 0.5 ? 'pos' : ''],
+          [r.sos === null ? '' : signed(r.sos, f1), r.sos === null ? '' : (r.sos > 1 ? 'neg' : (r.sos < -1 ? 'pos' : ''))]];
+      }));
+    host.appendChild(el('p', 'cap', 'Schedule is the average strength of remaining opponents against the league average, in projected points. Plus means a tougher road, minus means an easier one.'));
+    sec(host, 'Where each team finishes (league points)');
+    var byMed = info.slice().sort(function (a, b) { return (b.med - a.med) || (b.po - a.po); });
+    var cb = el('div', 'chartbox'); cb.style.marginTop = '8px';
+    rangeChart(cb, byMed, m6, m2);
+    var lg = el('div', 'legend'); lg.appendChild(el('span', '', 'Bar is the middle 80% of outcomes. Filled dot is the median. Hollow dot is today. Dashed lines are the median 6th and 2nd place finish.'));
+    cb.appendChild(lg); host.appendChild(cb);
+    sec(host, 'Chance of each final rank');
+    var heads = [['Team', 'l c0']]; for (var k = 1; k <= info.length; k++) heads.push([String(k), '']);
+    var t = put(host, heads, info.map(function (r) {
+      var cells = [[r.team, 'l c0 team']];
+      s.pos[r.i].forEach(function (c) { var p = c / s.N; cells.push([p < 0.005 ? '' : String(Math.round(p * 100)), '']); });
+      return cells;
+    }));
+    info.forEach(function (r, ri) {
+      s.pos[r.i].forEach(function (c, ci) {
+        var p = c / s.N, cell = t.rows[ri + 1].cells[ci + 1];
+        if (p >= 0.005) cell.style.background = 'color-mix(in srgb, var(--gold) ' + Math.min(48, Math.round(p * 110)) + '%, var(--panel))';
+        if (ci === 5) cell.style.borderRight = '2px solid var(--gold)';
+      });
+    });
+    host.appendChild(el('p', 'cap', 'Cells are percent chance. The gold line marks the playoff cutoff after 6th place.'));
+  }
+
+  function scatter(host, pts, sel) {
+    var W = 480, Hh = 320, L = 44, R = 14, T = 14, B = 36, pw = W - L - R, ph = Hh - T - B, all = [];
+    pts.forEach(function (p) { all.push(p.x, p.y); });
+    var ticks = niceTicks(Math.min.apply(null, all), Math.max.apply(null, all)), lo = ticks[0], hi = ticks[ticks.length - 1];
+    var x = function (v) { return L + pw * (v - lo) / (hi - lo); }, y = function (v) { return T + ph * (1 - (v - lo) / (hi - lo)); };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + Hh, role: 'img' });
+    ticks.forEach(function (tv) {
+      svg.appendChild(sv('line', { x1: L, x2: W - R, y1: y(tv), y2: y(tv), 'class': 'grid' }));
+      svg.appendChild(sv('text', { x: L - 6, y: y(tv) + 4, 'text-anchor': 'end', 'class': 'ax' }, String(tv)));
+      svg.appendChild(sv('text', { x: x(tv), y: Hh - 18, 'text-anchor': 'middle', 'class': 'ax' }, String(tv)));
+    });
+    svg.appendChild(sv('text', { x: L + pw / 2, y: Hh - 3, 'text-anchor': 'middle', 'class': 'ax' }, 'Yahoo projection'));
+    svg.appendChild(sv('line', { x1: x(lo), y1: y(lo), x2: x(hi), y2: y(hi), 'class': 's-avg' }));
+    pts.filter(function (p) { return p.t !== sel; }).forEach(function (p) { svg.appendChild(sv('circle', { cx: x(p.x), cy: y(p.y), r: 3.5, 'class': 'dot2' })); });
+    pts.filter(function (p) { return p.t === sel; }).forEach(function (p) { svg.appendChild(sv('circle', { cx: x(p.x), cy: y(p.y), r: 5, 'class': 'dot' })); });
+    host.appendChild(svg);
+  }
+
+  function renderPower() {
+    var host = $('x-power'), x = luReady(host); if (!x) return;
+    var o = getOutlook(x), d = x.d, rows = analyze(d).slice();
+    rows.forEach(function (r) { r.l3 = mean(r.scores.slice(-Math.min(3, r.scores.length))); r.str = mean(o.H.proj[r.i]); });
+    var zs = function (key, sign) {
+      var v = rows.map(function (r) { return r[key]; }), m = mean(v), q = 0;
+      v.forEach(function (u) { q += (u - m) * (u - m); });
+      q = Math.sqrt(q / v.length) || 1;
+      rows.forEach(function (r) { r['z' + key] = sign * (r[key] - m) / q; });
+    };
+    zs('avg', 1); zs('l3', 1); zs('apPct', 1); zs('str', 1); zs('sd', -1);
+    rows.forEach(function (r) { r.pw = 50 + 10 * (0.25 * r.zavg + 0.20 * r.zl3 + 0.20 * r.zapPct + 0.25 * r.zstr + 0.10 * r.zsd); });
+    var byStand = rows.slice().sort(function (a, b) { return a.rank - b.rank; });
+    rows.sort(function (a, b) { return b.pw - a.pw; });
+    var cap = el('p', 'cap', 'Power score blends season average (25%), last 3 weeks (20%), all-play win rate (20%), roster strength from Yahoo projections (25%), and steadiness (10%). Move is standings rank minus power rank: plus means the team looks better than its record. Weights are judgment, not fitted.');
+    cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'Power rankings', true);
+    put(host, [['Pwr', 'c1'], ['Team', 'l c2'], ['Stand', ''], ['Move', ''], ['Score', ''], ['Avg', ''], ['Last 3', ''], ['All-Play', ''], ['Roster Proj', ''], ['Std Dev', '']],
+      rows.map(function (r, k) {
+        var mv = r.rank - (k + 1);
+        return [[String(k + 1), 'c1'], [r.team, 'l c2 team'], [String(r.rank), ''], [mv === 0 ? '0' : signed(mv, String), mv > 0 ? 'pos' : (mv < 0 ? 'neg' : '')],
+          [f1(r.pw), ''], [f1(r.avg), ''], [f1(r.l3), ''], [(r.apPct * 100).toFixed(0) + '%', ''], [f1(r.str), ''], [f1(r.sd), '']];
+      }));
+    sec(host, 'Projection vs actual');
+    var pickRow = el('div', 'pick'); pickRow.appendChild(el('label', 'meta', 'Highlight'));
+    var sel = el('select'); sel.id = 'psel';
+    if (pSel === null || !d.rows.some(function (r) { return r.i === pSel; })) pSel = byStand[0].i;
+    byStand.forEach(function (r) { var op = el('option', '', r.team); op.value = String(r.i); if (r.i === pSel) op.selected = true; sel.appendChild(op); });
+    sel.addEventListener('change', function () { pSel = parseInt(sel.value, 10); renderPower(); });
+    pickRow.appendChild(sel); host.appendChild(pickRow);
+    var pts = []; d.rows.forEach(function (r) { x.keys.forEach(function (n) { pts.push({ x: projOf(n, r.i), y: r.wk[n].pts, t: r.i }); }); });
+    var cb = el('div', 'chartbox'); cb.style.marginTop = '8px'; scatter(cb, pts, pSel);
+    var lg = el('div', 'legend'); lg.appendChild(el('span', '', 'Each dot is one team in one week. Above the dashed line means it beat the Yahoo projection. Vertical axis is actual points.'));
+    cb.appendChild(lg); host.appendChild(cb);
+  }
+
+  function hotCold(host, all, d) {
+    var by = {};
+    all.forEach(function (p) {
+      var g = by[p.name] || (by[p.name] = { name: p.name, t: p.t, n: 0, proj: 0, pts: 0, beat: 0 });
+      g.n++; g.proj += p.proj; g.pts += p.pts; g.t = p.t; if (p.pts > p.proj) g.beat++;
+    });
+    var list = Object.keys(by).map(function (k) { var g = by[k]; g.ap = g.proj / g.n; g.ay = g.pts / g.n; g.df = g.ay - g.ap; return g; })
+      .filter(function (g) { return g.n >= 3 && g.ap >= 8; });
+    var heads = [['Player', 'l c0'], ['Team', 'l'], ['Starts', ''], ['Avg Proj', ''], ['Avg Pts', ''], ['Diff', ''], ['Beat Proj', '']];
+    var mk = function (g) { return [[g.name, 'l c0 team'], [d.teams[g.t], 'l'], [String(g.n), ''], [f1(g.ap), ''], [f1(g.ay), ''], [signed(g.df, f1), g.df >= 0 ? 'pos' : 'neg'], [g.beat + '/' + g.n, '']]; };
+    sec(host, 'Running hot (3 or more starts, projected 8 or more)');
+    put(host, heads, list.slice().sort(function (a, b) { return b.df - a.df; }).slice(0, 8).map(mk));
+    sec(host, 'Running cold (3 or more starts, projected 8 or more)');
+    put(host, heads, list.slice().sort(function (a, b) { return a.df - b.df; }).slice(0, 8).map(mk));
+    host.appendChild(el('p', 'cap', 'Averages over the weeks a player was started. One huge or empty game moves these a lot, and a few weeks of data rarely predicts the next one.'));
+  }
+
   function loadLU() {
     fetch('/api/lineups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var sig = JSON.stringify(d && d.weeks || null);
       if (sig === luSig) return;
-      luSig = sig;
+      luSig = sig; OUT = null;
       LU = d && d.weeks && Object.keys(d.weeks).length ? d.weeks : null;
-      if (['proj', 'pos', 'players', 'awards', 'stacks'].indexOf(tab) >= 0) renderCurrent();
+      if (LUTABS.indexOf(tab) >= 0) renderCurrent();
+    }).catch(function () {});
+    fetch('/api/upcoming').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      var sig = JSON.stringify(d || null);
+      if (sig === upSig) return;
+      upSig = sig; OUT = null;
+      UP = d && d.matchups && d.lineups ? d : null;
+      if (LUTABS.indexOf(tab) >= 0) renderCurrent();
     }).catch(function () {});
   }
 
@@ -1494,7 +1842,7 @@
   }
 
   // ---- Tabs, view mode, status ----
-  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, analytics: renderAnalytics, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
+  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
     proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks };
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   function setTab(t) {

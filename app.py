@@ -185,6 +185,18 @@ def api_lineups():
     return jsonify(weeks={})
 
 
+UPCOMING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upcoming.json")
+
+
+@app.route("/api/upcoming")
+def api_upcoming():
+    # Next week's lineups with Yahoo projections plus the remaining schedule, hand-entered from screenshots.
+    if os.path.exists(UPCOMING_FILE):
+        with open(UPCOMING_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    return jsonify({})
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")
