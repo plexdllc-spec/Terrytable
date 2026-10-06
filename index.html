@@ -1741,7 +1741,7 @@
     Object.keys(UP.lineups).forEach(function (ti) {
       UP.lineups[ti].forEach(function (p) { own[normName(p.p)] = { team: teams[ti] || ('Team ' + ti), p: p }; });
     });
-    host.appendChild(el('p', 'cap', 'Starters in the Week 5 lineups only, matched by name to the public ESPN NFL injury report and headlines. Matching is by name, so check the link before acting. Updates about every 10 minutes. ' + (NEWS.injuries.length || NEWS.articles.length ? '' : 'The news feed returned nothing right now.')));
+    host.appendChild(el('p', 'cap', 'Starters in the Week 5 lineups only, matched by name to the public ESPN NFL injury report. Updates about every 10 minutes. ' + (NEWS.injuries.length ? '' : 'The injury feed returned nothing right now.')));
     var rank = { out: 0, doubtful: 1, 'injured reserve': 0, questionable: 2, 'day-to-day': 3 };
     var by = {};
     function bucket(ti) { return by[ti] || (by[ti] = { inj: [], news: [] }); }
@@ -1752,25 +1752,19 @@
       var st = String(i.s).toLowerCase();
       bucket(ownTeam[k]).inj.push({ p: own[k].p, i: i, r: rank[st] === undefined ? 4 : rank[st] });
     });
-    NEWS.articles.forEach(function (a) {
-      var who = {}, txt = normName(a.h + ' ' + a.d);
-      (a.n || []).forEach(function (n) { if (own[normName(n)]) who[normName(n)] = 1; });
-      Object.keys(own).forEach(function (k) { if (k.length > 6 && txt.indexOf(k) >= 0) who[k] = 1; });
-      Object.keys(who).forEach(function (k) { bucket(ownTeam[k]).news.push({ a: a, who: own[k].p.p }); });
-    });
     var order = Object.keys(UP.lineups).sort(function (a, b) {
       var x = by[a] || { inj: [], news: [] }, y = by[b] || { inj: [], news: [] };
-      return (y.inj.length + y.news.length) - (x.inj.length + x.news.length) || a - b;
+      return y.inj.length - x.inj.length || a - b;
     });
     sec(host, 'By team', true);
     order.forEach(function (ti) {
       var b = by[ti] || { inj: [], news: [] };
       var det = el('details', 'nteam'), sm = el('summary');
       sm.appendChild(el('span', 'nt-n', teams[ti] || ('Team ' + ti)));
-      sm.appendChild(el('span', 'nt-c', b.inj.length + ' injur' + (b.inj.length === 1 ? 'y' : 'ies') + ', ' + b.news.length + ' headline' + (b.news.length === 1 ? '' : 's')));
+      sm.appendChild(el('span', 'nt-c', b.inj.length + ' injur' + (b.inj.length === 1 ? 'y' : 'ies')));
       det.appendChild(sm);
       var body = el('div', 'nt-b');
-      if (!b.inj.length && !b.news.length) body.appendChild(el('p', 'cap', 'Nothing on this team\'s starters.'));
+      if (!b.inj.length) body.appendChild(el('p', 'cap', 'No listed injuries among this team\'s starters.'));
       b.inj.sort(function (x, y) { return x.r - y.r; }).forEach(function (x) {
         var row = el('div', 'ni');
         row.appendChild(el('div', 'ni-h', x.p.p + ' (' + x.p.s + ', proj ' + f1(x.p.proj) + ')'));
@@ -1778,23 +1772,7 @@
         if (x.i.x) row.appendChild(el('div', 'ni-t', x.i.x));
         body.appendChild(row);
       });
-      b.news.slice(0, 6).forEach(function (x) {
-        var row = el('div', 'ni');
-        var h = el(x.a.u ? 'a' : 'div', 'ni-h', x.a.h);
-        if (x.a.u) { h.href = x.a.u; h.target = '_blank'; h.rel = 'noopener'; }
-        row.appendChild(h);
-        row.appendChild(el('div', 'ni-s', ago(x.a.t) + ' about ' + x.who));
-        if (x.a.d) row.appendChild(el('div', 'ni-t', x.a.d));
-        body.appendChild(row);
-      });
       det.appendChild(body); host.appendChild(det);
-    });
-    sec(host, 'League-wide headlines');
-    NEWS.articles.slice(0, 10).forEach(function (a) {
-      var box = el('div', 'prizeitem'), pw = el('span', 'pw', ago(a.t)); pw.style.minWidth = '4.6rem';
-      var link = el(a.u ? 'a' : 'span', 'pn', a.h);
-      if (a.u) { link.href = a.u; link.target = '_blank'; link.rel = 'noopener'; }
-      box.appendChild(pw); box.appendChild(link); host.appendChild(box);
     });
   }
 
