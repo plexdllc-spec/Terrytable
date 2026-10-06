@@ -478,6 +478,7 @@
     <button role="tab" id="tab-hof" aria-selected="false" data-tab="hof">Hall of Fame</button>
     <button role="tab" id="tab-profiles" aria-selected="false" data-tab="profiles">Managers</button>
     <button role="tab" id="tab-seasons" aria-selected="false" data-tab="seasons">Seasons</button>
+    <button role="tab" id="tab-records" aria-selected="false" data-tab="records">Records</button>
     <button role="tab" id="tab-recap" aria-selected="false" data-tab="recap">Recap</button>
     <button role="tab" id="tab-share" aria-selected="false" data-tab="share">Share</button>
   </nav>
@@ -593,6 +594,7 @@
     <section id="p-recap" hidden><div id="x-recap"></div></section>
     <section id="p-share" hidden><div id="x-share"></div></section>
 
+    <section id="p-records" hidden><div id="x-records"></div></section>
     <section id="p-seasons" hidden>
       <div id="x-seasons"></div>
     </section>
@@ -618,7 +620,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons', 'hof', 'profiles', 'recap', 'share', 'races'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons', 'hof', 'profiles', 'records', 'recap', 'share', 'races'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -2618,7 +2620,7 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
-    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, hof: renderHof, profiles: renderProfiles, recap: renderRecap, share: renderShare, races: renderRaces };
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, hof: renderHof, profiles: renderProfiles, records: renderRecords, recap: renderRecap, share: renderShare, races: renderRaces };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
   var OPENSEC = {}, csecBusy = false, csecQueued = false;
@@ -2660,6 +2662,84 @@
     }).observe(m, { childList: true, subtree: true });
   })();
 
+
+  // ---- Records: weekly scores from the manual sheet (2021 to 2025) plus this season ----
+  var HW = null;
+  function loadHW(cb) {
+    if (HW) { cb(); return; }
+    fetch('/api/history_weeks').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      HW = (d && d.seasons) || {}; cb();
+    }).catch(function () { HW = {}; cb(); });
+  }
+  function renderRecords() {
+    var host = $('x-records'); host.textContent = '';
+    if (!HW) { host.appendChild(el('p', 'cap', 'Loading records...')); loadHW(function () { if (tab === 'records') renderRecords(); }); return; }
+    var ys = Object.keys(HW).sort();
+    if (!ys.length) { host.appendChild(el('p', 'cap', 'No weekly history loaded yet.')); return; }
+    var d = getData(), cur = d.sample ? [] : d.rows, games = [], M = {}, W = {}, i;
+    ys.forEach(function (y) {
+      var ms = Object.keys(HW[y]);
+      for (var wk = 0; wk < 14; wk++) {
+        var sc = ms.map(function (m) { return HW[y][m].p[wk]; }), mx = Math.max.apply(null, sc), sum = 0;
+        sc.forEach(function (v) { sum += v; });
+        W[y + ':' + (wk + 1)] = { avg: sum / sc.length, hi: mx, lo: Math.min.apply(null, sc) };
+        ms.forEach(function (m) {
+          var o = M[m] || (M[m] = { n: m, lp: 0, w: 0, g: 0, pts: 0, tops: 0, ys: {}, best: 0 });
+          var v = HW[y][m].p[wk];
+          o.lp += HW[y][m].lp[wk]; o.w += HW[y][m].w[wk]; o.g++; o.pts += v; o.ys[y] = 1;
+          if (v === mx) { o.tops++; }
+          games.push({ y: y, wk: wk + 1, m: m, v: v, top: v === mx });
+        });
+      }
+    });
+    cur.forEach(function (r) {
+      Object.keys(r.wk).forEach(function (n) { games.push({ y: '2026', wk: +n, m: MGR26[r.team] || r.team, v: r.wk[n].pts, top: !!r.wk[n].top }); });
+    });
+    var cap = el('p', 'cap', 'Weekly scores for ' + ys[0] + ' to ' + ys[ys.length - 1] + ' come from the old manual Terry Table sheet, plus this season as it plays. League points use today\'s 3-point rule. Final standings stay on the Yahoo numbers.');
+    cap.style.marginTop = '0'; host.appendChild(cap);
+
+    sec(host, 'League points since ' + ys[0], true);
+    var list = Object.keys(M).map(function (k) { return M[k]; }).sort(function (a, b) { return (b.lp / b.g) - (a.lp / a.g); });
+    put(host, [['Manager', 'l'], ['LP', ''], ['LP per season', ''], ['Wins', ''], ['Avg pts', ''], ['Top weeks', '']],
+      list.map(function (m) {
+        var sn = Object.keys(m.ys).length;
+        return [[m.n, 'l team'], [String(m.lp), 'pos'], [(m.lp / sn).toFixed(1), ''], [m.w + '-' + (m.g - m.w), ''], [(m.pts / m.g).toFixed(1), ''], [String(m.tops), '']];
+      }));
+
+    sec(host, 'Weekly high score wins');
+    var tops = list.slice().sort(function (a, b) { return b.tops - a.tops; });
+    put(host, [['Manager', 'l'], ['Weeks', ''], ['At $50', '']], tops.filter(function (m) { return m.tops; }).map(function (m) { return [[m.n, 'l team'], [String(m.tops), 'pos'], ['$' + m.tops * 50, '']]; }));
+
+    sec(host, 'Highest single weeks');
+    function gl(arr) { return arr.slice(0, 10).map(function (g, k) { return [[String(k + 1), 'rk'], [g.m, 'l team'], [g.y + ' Wk ' + g.wk, 'l'], [g.v.toFixed(2), 'pos']]; }); }
+    var hi = games.slice().sort(function (a, b) { return b.v - a.v; });
+    put(host, [['#', ''], ['Manager', 'l'], ['When', 'l'], ['Pts', '']], gl(hi));
+    sec(host, 'Lowest single weeks');
+    put(host, [['#', ''], ['Manager', 'l'], ['When', 'l'], ['Pts', '']], gl(hi.slice().reverse()));
+
+    var wkNow = d.keys.length ? d.keys[d.keys.length - 1] : 0;
+    if (!d.sample && d.keys.length) {
+      sec(host, 'This season against the same weeks before');
+      var rows = [];
+      d.keys.forEach(function (n) {
+        var sc = d.rows.map(function (r) { return r.wk[n] ? r.wk[n].pts : null; }).filter(function (v) { return v !== null; });
+        var avg = mean(sc), hiN = Math.max.apply(null, sc), ha = 0, hh = 0;
+        ys.forEach(function (y) { ha += W[y + ':' + n].avg; hh += W[y + ':' + n].hi; });
+        ha /= ys.length; hh /= ys.length;
+        rows.push([['Wk ' + n, 'l'], [avg.toFixed(1), ''], [ha.toFixed(1), ''], [signed(avg - ha, f1), (avg - ha) >= 0 ? 'pos' : 'neg'], [hiN.toFixed(1), ''], [hh.toFixed(1), '']]);
+      });
+      put(host, [['Week', 'l'], ['2026 avg', ''], ['Past avg', ''], ['Diff', ''], ['2026 high', ''], ['Past high', '']], rows);
+      sec(host, 'Each manager against their own past');
+      var rr = d.rows.map(function (r) {
+        var mg = MGR26[r.team], h = M[mg], now = r.pts / d.keys.length;
+        return { t: mg || r.team, now: now, past: h ? h.pts / h.g : null };
+      }).sort(function (a, b) { return (b.now - (b.past || b.now)) - (a.now - (a.past || a.now)); });
+      put(host, [['Manager', 'l'], ['2026 avg', ''], ['Past avg', ''], ['Diff', '']], rr.map(function (r) {
+        return [[r.t, 'l team'], [r.now.toFixed(1), ''], [r.past === null ? 'n/a' : r.past.toFixed(1), ''], [r.past === null ? '' : signed(r.now - r.past, f1), r.past !== null && r.now >= r.past ? 'pos' : 'neg']];
+      }));
+    }
+  }
+
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
     ['standings', ['table', 'playoffs', 'odds']],
@@ -2667,7 +2747,7 @@
     ['teams', ['power', 'analytics', 'races', 'trends', 'scoring']],
     ['players', ['players', 'pos', 'stacks']],
     ['fun', ['luck', 'awards', 'share']],
-    ['history', ['alltime', 'hof', 'profiles', 'seasons']]
+    ['history', ['alltime', 'hof', 'profiles', 'seasons', 'records']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {

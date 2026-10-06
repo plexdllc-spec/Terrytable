@@ -257,6 +257,17 @@ def api_history():
     return jsonify(seasons={})
 
 
+HISTORY_WEEKS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history_weeks.json")
+
+
+@app.route("/api/history_weeks")
+def api_history_weeks():
+    if os.path.exists(HISTORY_WEEKS_FILE):
+        with open(HISTORY_WEEKS_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    return jsonify(seasons={})
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")
