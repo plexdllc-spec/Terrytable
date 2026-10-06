@@ -1519,7 +1519,7 @@
       if (v > -100 && v < 100) v = v < 0 ? -100 : 100;
       return (v > 0 ? '+' : '') + v;
     }
-    host.appendChild(el('p', 'cap', 'Lines are fair, no vig. Spread is the forecast margin to the nearest half point (minus is the favorite). Money line is the win chance as American odds: minus means risk that much to win 100, plus means win that much on 100. Total is the two forecasts added.'));
+    host.appendChild(el('p', 'cap', 'Lines are fair, no vig. Spread is the forecast margin to the nearest half point (minus is the favorite). Money line is the win chance as American odds: minus means risk that much to win 100, plus means win that much on 100.'));
     var box = el('div', 'mugrid');
     up.matchups.forEach(function (m) {
       var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
@@ -1529,15 +1529,10 @@
       c.appendChild(h);
       var bar = el('div', 'wp'), seg = el('i'); seg.style.width = (pa * 100).toFixed(1) + '%'; bar.appendChild(seg); c.appendChild(bar);
       var row = function (lbl, l, r) { var e = el('div', 'mu-r'); e.appendChild(el('span', '', l)); e.appendChild(el('span', '', lbl)); e.appendChild(el('span', '', r)); c.appendChild(e); };
-      row('Win chance', Math.round(pa * 100) + '%', Math.round((1 - pa) * 100) + '%');
-      row('Yahoo win chance', m.wa + '%', (100 - m.wa) + '%');
       var sp = Math.round(Math.abs(fa - fb) * 2) / 2, spA = sp === 0 ? 'PK' : (fa >= fb ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (fb > fa ? '-' : '+') + sp.toFixed(1);
       row('Spread', spA, spB);
       row('Money line', ml(pa), ml(1 - pa));
-      row('Total', f1(fa + fb), f1(fa + fb));
       row('Forecast', f1(fa), f1(fb));
-      row('Likely range', f0(fa - 1.2816 * sg) + ' to ' + f0(fa + 1.2816 * sg), f0(fb - 1.2816 * sg) + ' to ' + f0(fb + 1.2816 * sg));
-      row('Yahoo projection', f2(m.pa), f2(m.pb));
       row('Exp league pts', f1(elp(a, pa)), f1(elp(b, 1 - pa)));
       [a, b].forEach(function (i) {
         if (o.fill[i] && o.fill[i].holes) c.appendChild(el('div', 'mu-n', d.teams[i] + ': ' + o.fill[i].holes + ' empty slot' + (o.fill[i].holes > 1 ? 's' : '') + ' filled at ' + REPL));
