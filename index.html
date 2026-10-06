@@ -1508,10 +1508,7 @@
     if (!o.up) { host.appendChild(el('p', 'cap', 'The upcoming week data is out of date. Send the next week preview to refresh it.')); return; }
     var up = o.up, sg = o.fm.sigma, sm = sg * Math.SQRT2, T = ids.length;
     var fbar = mean(ids.map(function (i) { return o.f5[i]; }));
-    var cap = el('p', 'cap', 'Week ' + up.week + ' forecast. It starts from the Yahoo projection for each lineup. A starter projected at 0 (bye or out) is replaced with ' + REPL + ', a typical low-end starter. Likely range covers about 80% of outcomes, using the typical Yahoo miss so far (' + f1(sg) + ' points per team).');
-    cap.style.marginTop = '0'; host.appendChild(cap);
     var bt = o.bt;
-    if (bt.n) host.appendChild(el('p', 'cap', 'Backtest on ' + bt.n + ' team-weeks: Yahoo alone missed by ' + f1(bt.y) + ' points on average. Adding a team-history adjustment gave ' + f1(bt.a) + '. Blending in recent scoring gave ' + f1(bt.b) + '. Weight on team history now: ' + f2(o.fm.k) + ' (0 means beating or missing projections looks like luck so far). Expect near coin flips unless the gap is large.'));
     function ml(p) {
       p = Math.min(0.99, Math.max(0.01, p));
       var v = p >= 0.5 ? -100 * p / (1 - p) : 100 * (1 - p) / p;
@@ -1519,7 +1516,6 @@
       if (v > -100 && v < 100) v = v < 0 ? -100 : 100;
       return (v > 0 ? '+' : '') + v;
     }
-    host.appendChild(el('p', 'cap', 'Lines are fair, no vig. Spread is the forecast margin to the nearest half point (minus is the favorite). Money line is the win chance as American odds: minus means risk that much to win 100, plus means win that much on 100.'));
     var box = el('div', 'mugrid');
     up.matchups.forEach(function (m) {
       var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
@@ -1587,8 +1583,6 @@
     info.sort(function (a, b) { return (b.po - a.po) || (b.med - a.med) || (a.rank - b.rank); });
     var c6 = s.cut6.slice().sort(function (a, b) { return a - b; }), c2 = s.cut2.slice().sort(function (a, b) { return a - b; });
     var m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
-    var cap = el('p', 'cap', 'Simulation of weeks ' + s.start + ' to ' + WEEKS + ' (' + s.N + ' runs) on the real schedule. Each team scores around its average Yahoo projection with typical Yahoo-sized misses. Rosters and injuries are held as they look now' + (o.up ? ', with week ' + o.up.week + ' using the forecast on the Outlook tab' : '') + '. Median finish: 6th place ends near ' + m6 + ' league pts, 2nd place near ' + m2 + '.');
-    cap.style.marginTop = '0'; host.appendChild(cap);
     sec(host, 'Playoff and bye odds', true);
     put(host, [['#', 'c1'], ['Team', 'l c2'], ['Now', ''], ['LP', ''], ['Median Final LP', ''], ['Playoffs', ''], ['Bye', ''], ['Schedule', '']],
       info.map(function (r, k) {
@@ -1739,8 +1733,6 @@
     });
     var list = Object.keys(M).map(function (k) { return M[k]; });
     list.sort(function (a, b) { return (b.t1 - a.t1) || (b.t2 - a.t2) || ((b.w / (b.w + b.l)) - (a.w / (a.w + a.l))); });
-    var cap = el('p', 'cap', 'Final standings from Yahoo for ' + years[0] + ' to ' + years[years.length - 1] + ' (' + years.length + ' seasons loaded), grouped by manager so team name changes do not matter. Final rank is the end of playoffs finish, so ranks 1 to 3 are champion, runner-up and third place. Playoffs counts finishes of 6th or better. Record is regular season. Managers Yahoo hides are left out of the manager table.');
-    cap.style.marginTop = '0'; host.appendChild(cap);
     sec(host, 'All-time by manager', true);
     put(host, [['#', 'c1'], ['Manager', 'l c2'], ['Titles', ''], ['2nd', ''], ['3rd', ''], ['Playoffs', ''], ['Seasons', ''], ['Record', ''], ['Win %', ''], ['PF / game', ''], ['Avg finish', ''], ['Best', '']],
       list.map(function (m, k) {
