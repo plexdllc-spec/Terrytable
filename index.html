@@ -421,6 +421,7 @@
     <button role="tab" id="g-teams" aria-selected="false" data-group="teams">Teams</button>
     <button role="tab" id="g-players" aria-selected="false" data-group="players">Players</button>
     <button role="tab" id="g-fun" aria-selected="false" data-group="fun">Fun</button>
+    <button role="tab" id="g-history" aria-selected="false" data-group="history">History</button>
   </nav>
   <nav id="subnav" role="tablist" aria-label="Subsections">
     <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Standings</button>
@@ -439,6 +440,8 @@
     <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
     <button role="tab" id="tab-stacks" aria-selected="false" data-tab="stacks">Stacks</button>
     <button role="tab" id="tab-news" aria-selected="false" data-tab="news">News</button>
+    <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
+    <button role="tab" id="tab-seasons" aria-selected="false" data-tab="seasons">Seasons</button>
   </nav>
 
   <div id="sample" class="note" hidden>Example data. The league appears here once the first week is final.</div>
@@ -542,6 +545,14 @@
       <div id="x-stacks"></div>
     </section>
 
+    <section id="p-alltime" hidden>
+      <div id="x-alltime"></div>
+    </section>
+
+    <section id="p-seasons" hidden>
+      <div id="x-seasons"></div>
+    </section>
+
     <section id="p-news" hidden>
       <div id="x-news"></div>
     </section>
@@ -563,7 +574,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -1632,6 +1643,76 @@
   }
 
 
+
+  // ---- History: past seasons by manager ----
+  var HIST = null, histSeason = null;
+  function loadHist(cb) {
+    if (HIST) { cb(); return; }
+    fetch('/api/history').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      HIST = (d && d.seasons) || {}; cb();
+    }).catch(function () { HIST = {}; cb(); });
+  }
+  function histYears() { return Object.keys(HIST).sort(); }
+  function gamesIn(rows) { return rows[0].w + rows[0].l; }
+  function renderAlltime() {
+    var host = $('x-alltime'); host.textContent = '';
+    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'alltime') renderAlltime(); }); return; }
+    var years = histYears();
+    if (!years.length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return; }
+    var M = {}, champs = [], recs = [];
+    years.forEach(function (y) {
+      var rows = HIST[y], g = gamesIn(rows);
+      rows.forEach(function (r) {
+        var m = M[r.mgr] || (M[r.mgr] = { n: r.mgr, s: 0, t1: 0, t2: 0, t3: 0, po: 0, w: 0, l: 0, pf: 0, g: 0, fin: 0, best: 99, teams: {} });
+        m.s++; m.w += r.w; m.l += r.l; m.pf += r.pf; m.g += r.w + r.l; m.fin += r.r; m.best = Math.min(m.best, r.r);
+        if (r.r === 1) m.t1++; if (r.r === 2) m.t2++; if (r.r === 3) m.t3++; if (r.r <= 6) m.po++;
+        recs.push({ y: y, r: r, g: g });
+      });
+      champs.push({ y: y, c: rows[0], s: rows[1] });
+    });
+    var list = Object.keys(M).map(function (k) { return M[k]; });
+    list.sort(function (a, b) { return (b.t1 - a.t1) || (b.t2 - a.t2) || ((b.w / (b.w + b.l)) - (a.w / (a.w + a.l))); });
+    var cap = el('p', 'cap', 'Final standings from Yahoo for ' + years[0] + ' to ' + years[years.length - 1] + ' (' + years.length + ' seasons loaded), grouped by manager so team name changes do not matter. Final rank is the end of playoffs finish, so ranks 1 to 3 are champion, runner-up and third place. Playoffs counts finishes of 6th or better. Record is regular season.');
+    cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'All-time by manager', true);
+    put(host, [['#', 'c1'], ['Manager', 'l c2'], ['Titles', ''], ['2nd', ''], ['3rd', ''], ['Playoffs', ''], ['Seasons', ''], ['Record', ''], ['Win %', ''], ['PF / game', ''], ['Avg finish', ''], ['Best', '']],
+      list.map(function (m, k) {
+        return [[String(k + 1), 'c1'], [m.n, 'l c2 team'], [String(m.t1), m.t1 ? 'pos' : ''], [String(m.t2), ''], [String(m.t3), ''], [m.po + '/' + m.s, ''], [String(m.s), ''],
+          [m.w + '-' + m.l, ''], [(100 * m.w / (m.w + m.l)).toFixed(1) + '%', ''], [f1(m.pf / m.g), ''], [f1(m.fin / m.s), ''], [m.best === 1 ? 'Champ' : String(m.best), '']];
+      }));
+    sec(host, 'Champions');
+    put(host, [['Year', ''], ['Champion', 'l'], ['Manager', 'l'], ['Runner-up', 'l']],
+      champs.slice().reverse().map(function (c) { return [[c.y, ''], [c.c.team, 'l team'], [c.c.mgr, 'l'], [c.s.team + ' (' + c.s.mgr + ')', 'l']]; }));
+    function top(title, key, dir, fmt) {
+      var a = recs.slice().sort(function (p, q) { return dir * (key(q) - key(p)); }).slice(0, 5);
+      sec(host, title);
+      put(host, [['Year', ''], ['Team', 'l'], ['Manager', 'l'], ['Value', '']], a.map(function (x) { return [[x.y, ''], [x.r.team, 'l team'], [x.r.mgr, 'l'], [fmt(x), '']]; }));
+    }
+    top('Most points in a season (per game)', function (x) { return x.r.pf / x.g; }, 1, function (x) { return f1(x.r.pf / x.g) + ' (' + f1(x.r.pf) + ' total)'; });
+    top('Fewest points in a season (per game)', function (x) { return x.r.pf / x.g; }, -1, function (x) { return f1(x.r.pf / x.g) + ' (' + f1(x.r.pf) + ' total)'; });
+    top('Best regular season records', function (x) { return x.r.w / x.g; }, 1, function (x) { return x.r.w + '-' + x.r.l + ' (finished ' + x.r.r + ')'; });
+    top('Most points against (unluckiest schedule)', function (x) { return x.r.pa / x.g; }, 1, function (x) { return f1(x.r.pa / x.g) + ' per game, ' + x.r.w + '-' + x.r.l; });
+  }
+  function renderSeasons() {
+    var host = $('x-seasons'); host.textContent = '';
+    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'seasons') renderSeasons(); }); return; }
+    var years = histYears().reverse();
+    if (!years.length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return; }
+    if (!histSeason || !HIST[histSeason]) histSeason = years[0];
+    var bar = el('div', 'pick'), lab = el('label', 'meta', 'Season'), sel = el('select');
+    years.forEach(function (y) { var o = el('option', '', y); o.value = y; if (y === histSeason) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', function () { histSeason = sel.value; renderSeasons(); });
+    bar.appendChild(lab); bar.appendChild(sel); host.appendChild(bar);
+    var rows = HIST[histSeason], g = gamesIn(rows);
+    var cap = el('p', 'cap', histSeason + ' final standings. Champion: ' + rows[0].team + ' (' + rows[0].mgr + '). Rank is the final finish after playoffs; the top 6 made the playoffs. ' + g + ' regular season games.');
+    host.appendChild(cap);
+    put(host, [['Rank', 'c1'], ['Team', 'l c2'], ['Manager', 'l'], ['Record', ''], ['PF', ''], ['PA', ''], ['Diff', '']],
+      rows.map(function (r) {
+        var d = r.pf - r.pa;
+        return [[String(r.r), 'c1'], [r.team + (r.r === 1 ? ' (champion)' : ''), 'l c2 team'], [r.mgr, 'l'], [r.w + '-' + r.l, ''], [f2(r.pf), ''], [f2(r.pa), ''], [signed(d, f1), d >= 0 ? 'pos' : 'neg']];
+      }));
+  }
+
   // ---- News: injuries and headlines for Week 5 starters ----
   var NEWS = null, NEWSAT = 0;
   function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim(); }
@@ -1980,14 +2061,15 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
-    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews };
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons };
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
     ['standings', ['table', 'playoffs', 'odds']],
     ['week', ['outlook', 'matchups', 'proj', 'news']],
     ['teams', ['power', 'analytics', 'trends', 'scoring']],
     ['players', ['players', 'pos', 'stacks']],
-    ['fun', ['luck', 'awards']]
+    ['fun', ['luck', 'awards']],
+    ['history', ['alltime', 'seasons']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {

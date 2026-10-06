@@ -245,6 +245,18 @@ def api_news():
     return jsonify(data)
 
 
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.json")
+
+
+@app.route("/api/history")
+def api_history():
+    # Past seasons' final standings, hand-entered from Yahoo screenshots.
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    return jsonify(seasons={})
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")

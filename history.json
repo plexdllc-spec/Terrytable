@@ -1,0 +1,774 @@
+{
+"seasons": {
+"2019": [
+{
+"r": 1,
+"team": "We Ain't No Puppies",
+"mgr": "Dave",
+"w": 6,
+"l": 7,
+"pf": 1642.25,
+"pa": 1589.2
+},
+{
+"r": 2,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 9,
+"l": 4,
+"pf": 1604.02,
+"pa": 1480.17
+},
+{
+"r": 3,
+"team": "Nathan's Peter Man",
+"mgr": "DanielM",
+"w": 11,
+"l": 2,
+"pf": 1495.9,
+"pa": 1328.92
+},
+{
+"r": 4,
+"team": "DeVante Epstein",
+"mgr": "Joshua",
+"w": 9,
+"l": 4,
+"pf": 1627.72,
+"pa": 1366.74
+},
+{
+"r": 5,
+"team": "The Dean Blokes XIII",
+"mgr": "Corey",
+"w": 6,
+"l": 7,
+"pf": 1385.54,
+"pa": 1347.91
+},
+{
+"r": 6,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 6,
+"l": 7,
+"pf": 1403.67,
+"pa": 1352.45
+},
+{
+"r": 7,
+"team": "Who needs luck?",
+"mgr": "Shaq",
+"w": 4,
+"l": 9,
+"pf": 1378.18,
+"pa": 1525.21
+},
+{
+"r": 8,
+"team": "Grizzlamic Bearorist",
+"mgr": "Marc",
+"w": 6,
+"l": 7,
+"pf": 1257.42,
+"pa": 1410.52
+},
+{
+"r": 9,
+"team": "Jew Rosen",
+"mgr": "Aron",
+"w": 6,
+"l": 7,
+"pf": 1355.64,
+"pa": 1449.9
+},
+{
+"r": 10,
+"team": "Damaged Cat Avengers",
+"mgr": "James",
+"w": 5,
+"l": 8,
+"pf": 1421.84,
+"pa": 1476.4
+},
+{
+"r": 11,
+"team": "So Much Winning",
+"mgr": "Weinjew",
+"w": 5,
+"l": 8,
+"pf": 1429.78,
+"pa": 1422.83
+},
+{
+"r": 12,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 5,
+"l": 8,
+"pf": 1312.81,
+"pa": 1564.52
+}
+],
+"2020": [
+{
+"r": 1,
+"team": "Miami's Finest",
+"mgr": "DanielM",
+"w": 9,
+"l": 4,
+"pf": 1559.91,
+"pa": 1486.85
+},
+{
+"r": 2,
+"team": "Palestinian Chickens",
+"mgr": "Shaq",
+"w": 12,
+"l": 1,
+"pf": 1836.7,
+"pa": 1404.08
+},
+{
+"r": 3,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 10,
+"l": 3,
+"pf": 1625.88,
+"pa": 1418.99
+},
+{
+"r": 4,
+"team": "The QuaranDeans XIV",
+"mgr": "Corey",
+"w": 7,
+"l": 6,
+"pf": 1579.13,
+"pa": 1508.92
+},
+{
+"r": 5,
+"team": "Laviska Epstein",
+"mgr": "Joshua",
+"w": 9,
+"l": 4,
+"pf": 1399.08,
+"pa": 1334.8
+},
+{
+"r": 6,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 6,
+"l": 7,
+"pf": 1402.46,
+"pa": 1548.08
+},
+{
+"r": 7,
+"team": "We Ain't No Puppies",
+"mgr": "Dave",
+"w": 5,
+"l": 8,
+"pf": 1550.48,
+"pa": 1486.69
+},
+{
+"r": 8,
+"team": "RKT Calls",
+"mgr": "James",
+"w": 5,
+"l": 8,
+"pf": 1359.33,
+"pa": 1487.53
+},
+{
+"r": 9,
+"team": "Bunch Of Malarkey",
+"mgr": "Weinjew",
+"w": 3,
+"l": 10,
+"pf": 1221.73,
+"pa": 1459.43
+},
+{
+"r": 10,
+"team": "Grizzlamic Bearorist",
+"mgr": "Marc",
+"w": 4,
+"l": 9,
+"pf": 1289.5,
+"pa": 1402.6
+},
+{
+"r": 11,
+"team": "Rudyman Giuliani",
+"mgr": "Aron",
+"w": 3,
+"l": 10,
+"pf": 1307.9,
+"pa": 1490.0
+},
+{
+"r": 12,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 5,
+"l": 8,
+"pf": 1315.94,
+"pa": 1420.07
+}
+],
+"2021": [
+{
+"r": 1,
+"team": "Bailey's Hangover",
+"mgr": "Marc",
+"w": 8,
+"l": 6,
+"pf": 1558.89,
+"pa": 1419.99
+},
+{
+"r": 2,
+"team": "Snowgod Returns",
+"mgr": "James",
+"w": 11,
+"l": 3,
+"pf": 1623.59,
+"pa": 1461.9
+},
+{
+"r": 3,
+"team": "Not So Fast",
+"mgr": "Shaq",
+"w": 8,
+"l": 6,
+"pf": 1599.44,
+"pa": 1585.29
+},
+{
+"r": 4,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 10,
+"l": 4,
+"pf": 1720.04,
+"pa": 1452.97
+},
+{
+"r": 5,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 9,
+"l": 5,
+"pf": 1647.76,
+"pa": 1448.92
+},
+{
+"r": 6,
+"team": "Coach Rudy Grudy",
+"mgr": "Aron",
+"w": 7,
+"l": 7,
+"pf": 1596.1,
+"pa": 1565.09
+},
+{
+"r": 7,
+"team": "Scary Kadarius Decklebaum",
+"mgr": "Joshua",
+"w": 6,
+"l": 8,
+"pf": 1488.75,
+"pa": 1675.77
+},
+{
+"r": 8,
+"team": "MyPillow Biters",
+"mgr": "Weinjew",
+"w": 5,
+"l": 9,
+"pf": 1613.61,
+"pa": 1590.46
+},
+{
+"r": 9,
+"team": "OmicronOmicronOmiDeans XV",
+"mgr": "Corey",
+"w": 5,
+"l": 9,
+"pf": 1505.11,
+"pa": 1622.65
+},
+{
+"r": 10,
+"team": "Morty's Maids",
+"mgr": "DanielM",
+"w": 5,
+"l": 9,
+"pf": 1514.79,
+"pa": 1684.03
+},
+{
+"r": 11,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 5,
+"l": 9,
+"pf": 1457.22,
+"pa": 1636.09
+},
+{
+"r": 12,
+"team": "THE Arizona Perpies",
+"mgr": "Dave",
+"w": 5,
+"l": 9,
+"pf": 1418.64,
+"pa": 1600.78
+}
+],
+"2022": [
+{
+"r": 1,
+"team": "The Fucking Shredders",
+"mgr": "Marc",
+"w": 8,
+"l": 6,
+"pf": 1584.81,
+"pa": 1478.41
+},
+{
+"r": 2,
+"team": "The Ghost of Chase Edmonds",
+"mgr": "Shaq",
+"w": 9,
+"l": 5,
+"pf": 1506.48,
+"pa": 1398.3
+},
+{
+"r": 3,
+"team": "Heard You Shit The Bed",
+"mgr": "Weinjew",
+"w": 7,
+"l": 7,
+"pf": 1384.91,
+"pa": 1319.86
+},
+{
+"r": 4,
+"team": "Dean Program XVI",
+"mgr": "Corey",
+"w": 9,
+"l": 5,
+"pf": 1501.79,
+"pa": 1319.56
+},
+{
+"r": 5,
+"team": "RB1SZN",
+"mgr": "James",
+"w": 9,
+"l": 5,
+"pf": 1450.8,
+"pa": 1417.82
+},
+{
+"r": 6,
+"team": "Morty's Maids",
+"mgr": "DanielM",
+"w": 9,
+"l": 5,
+"pf": 1488.5,
+"pa": 1381.93
+},
+{
+"r": 7,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 5,
+"l": 9,
+"pf": 1468.36,
+"pa": 1479.59
+},
+{
+"r": 8,
+"team": "DeAndre Epstein",
+"mgr": "Joshua",
+"w": 7,
+"l": 7,
+"pf": 1268.79,
+"pa": 1376.16
+},
+{
+"r": 9,
+"team": "Klitty Titty City Committee",
+"mgr": "Dave",
+"w": 6,
+"l": 8,
+"pf": 1311.38,
+"pa": 1372.98
+},
+{
+"r": 10,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 4,
+"l": 10,
+"pf": 1154.06,
+"pa": 1338.34
+},
+{
+"r": 11,
+"team": "Coach Rudy Grudy",
+"mgr": "Aron",
+"w": 7,
+"l": 7,
+"pf": 1238.86,
+"pa": 1361.48
+},
+{
+"r": 12,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 4,
+"l": 10,
+"pf": 1294.3,
+"pa": 1408.61
+}
+],
+"2023": [
+{
+"r": 1,
+"team": "Morty's Maids",
+"mgr": "DanielM",
+"w": 7,
+"l": 7,
+"pf": 1362.7,
+"pa": 1450.73
+},
+{
+"r": 2,
+"team": "The Fucking Shredders",
+"mgr": "Marc",
+"w": 10,
+"l": 4,
+"pf": 1596.68,
+"pa": 1369.63
+},
+{
+"r": 3,
+"team": "Impregnated Water",
+"mgr": "Joshua",
+"w": 12,
+"l": 2,
+"pf": 1648.08,
+"pa": 1269.55
+},
+{
+"r": 4,
+"team": "Inter Rüdyman",
+"mgr": "Aron",
+"w": 7,
+"l": 7,
+"pf": 1492.78,
+"pa": 1438.86
+},
+{
+"r": 5,
+"team": "Klitty Titty City Committee",
+"mgr": "Dave",
+"w": 9,
+"l": 5,
+"pf": 1551.88,
+"pa": 1494.8
+},
+{
+"r": 6,
+"team": "The Ghost of Chase Edmonds",
+"mgr": "Shaq",
+"w": 7,
+"l": 7,
+"pf": 1467.03,
+"pa": 1421.82
+},
+{
+"r": 7,
+"team": "Keon Dean XVII",
+"mgr": "Corey",
+"w": 6,
+"l": 8,
+"pf": 1316.95,
+"pa": 1399.77
+},
+{
+"r": 8,
+"team": "RB1SZN",
+"mgr": "James",
+"w": 7,
+"l": 7,
+"pf": 1351.6,
+"pa": 1354.59
+},
+{
+"r": 9,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 6,
+"l": 8,
+"pf": 1361.02,
+"pa": 1536.66
+},
+{
+"r": 10,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 5,
+"l": 9,
+"pf": 1380.22,
+"pa": 1397.49
+},
+{
+"r": 11,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 4,
+"l": 10,
+"pf": 1283.21,
+"pa": 1507.45
+},
+{
+"r": 12,
+"team": "McConnell's Stunners",
+"mgr": "Weinjew",
+"w": 4,
+"l": 10,
+"pf": 1271.73,
+"pa": 1442.53
+}
+],
+"2024": [
+{
+"r": 1,
+"team": "Springfield Cat Rescue",
+"mgr": "Weinjew",
+"w": 10,
+"l": 4,
+"pf": 1649.45,
+"pa": 1496.15
+},
+{
+"r": 2,
+"team": "Tally SwampDonks",
+"mgr": "DanielM",
+"w": 8,
+"l": 6,
+"pf": 1697.68,
+"pa": 1560.86
+},
+{
+"r": 3,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 12,
+"l": 2,
+"pf": 1754.52,
+"pa": 1477.57
+},
+{
+"r": 4,
+"team": "Deaner XVIII",
+"mgr": "Corey",
+"w": 9,
+"l": 5,
+"pf": 1763.14,
+"pa": 1554.56
+},
+{
+"r": 5,
+"team": "The Fucking Shredders",
+"mgr": "Marc",
+"w": 8,
+"l": 6,
+"pf": 1728.81,
+"pa": 1602.35
+},
+{
+"r": 6,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 10,
+"l": 4,
+"pf": 1653.45,
+"pa": 1410.27
+},
+{
+"r": 7,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 5,
+"l": 9,
+"pf": 1512.3,
+"pa": 1688.59
+},
+{
+"r": 8,
+"team": "Sleepy Joe's Jag Rag",
+"mgr": "James",
+"w": 3,
+"l": 11,
+"pf": 1394.45,
+"pa": 1743.12
+},
+{
+"r": 9,
+"team": "Rudyman",
+"mgr": "Aron",
+"w": 6,
+"l": 8,
+"pf": 1546.89,
+"pa": 1630.42
+},
+{
+"r": 10,
+"team": "Klitty Titty City Committee",
+"mgr": "Dave",
+"w": 6,
+"l": 8,
+"pf": 1617.84,
+"pa": 1654.68
+},
+{
+"r": 11,
+"team": "Darth Yoshenheimer",
+"mgr": "Joshua",
+"w": 4,
+"l": 10,
+"pf": 1301.91,
+"pa": 1601.38
+},
+{
+"r": 12,
+"team": "*2022 Champs",
+"mgr": "Shaq",
+"w": 3,
+"l": 11,
+"pf": 1327.19,
+"pa": 1527.68
+}
+],
+"2025": [
+{
+"r": 1,
+"team": "The Shredders",
+"mgr": "Marc",
+"w": 9,
+"l": 5,
+"pf": 1661.85,
+"pa": 1564.05
+},
+{
+"r": 2,
+"team": "Rudyman",
+"mgr": "Aron",
+"w": 9,
+"l": 5,
+"pf": 1773.32,
+"pa": 1638.03
+},
+{
+"r": 3,
+"team": "Injured Reserve",
+"mgr": "Shaq",
+"w": 7,
+"l": 7,
+"pf": 1778.89,
+"pa": 1734.4
+},
+{
+"r": 4,
+"team": "Klitty Titty City Committee",
+"mgr": "Dave",
+"w": 9,
+"l": 5,
+"pf": 1645.99,
+"pa": 1577.61
+},
+{
+"r": 5,
+"team": "Kit Ramsey's Brother",
+"mgr": "Weinjew",
+"w": 7,
+"l": 7,
+"pf": 1532.15,
+"pa": 1523.83
+},
+{
+"r": 6,
+"team": "Yordy",
+"mgr": "Jordan",
+"w": 8,
+"l": 6,
+"pf": 1662.46,
+"pa": 1421.76
+},
+{
+"r": 7,
+"team": "Jewban",
+"mgr": "Daniel",
+"w": 4,
+"l": 10,
+"pf": 1413.63,
+"pa": 1629.1
+},
+{
+"r": 8,
+"team": "I'll Kupp Your Balls",
+"mgr": "James",
+"w": 7,
+"l": 7,
+"pf": 1524.72,
+"pa": 1538.84
+},
+{
+"r": 9,
+"team": "Flois",
+"mgr": "nizzy",
+"w": 7,
+"l": 7,
+"pf": 1586.77,
+"pa": 1636.86
+},
+{
+"r": 10,
+"team": "GUS BUS Dean XIX",
+"mgr": "Corey",
+"w": 7,
+"l": 7,
+"pf": 1506.54,
+"pa": 1561.84
+},
+{
+"r": 11,
+"team": "Tom Wilkinson RIP",
+"mgr": "Joshua",
+"w": 7,
+"l": 7,
+"pf": 1479.38,
+"pa": 1533.44
+},
+{
+"r": 12,
+"team": "Tally SwampDonks",
+"mgr": "DanielM",
+"w": 3,
+"l": 11,
+"pf": 1457.54,
+"pa": 1663.48
+}
+]
+}
+}
