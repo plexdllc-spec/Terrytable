@@ -197,6 +197,54 @@ def api_upcoming():
     return jsonify({})
 
 
+ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/"
+_news = {"t": 0.0, "data": None}
+
+
+def _espn(path):
+    r = requests.get(ESPN + path, timeout=15, headers={"User-Agent": "TerrysTable/1.0"})
+    r.raise_for_status()
+    return r.json()
+
+
+def build_news():
+    out = {"articles": [], "injuries": []}
+    try:
+        for a in _espn("news?limit=50").get("articles", []):
+            names = [c.get("description", "") for c in a.get("categories", []) if c.get("type") == "athlete"]
+            out["articles"].append({
+                "h": a.get("headline", ""), "d": a.get("description", ""), "t": a.get("published", ""),
+                "u": ((a.get("links") or {}).get("web") or {}).get("href", ""), "n": [n for n in names if n]})
+    except Exception:
+        pass
+    try:
+        for tm in _espn("injuries").get("injuries", []):
+            for i in tm.get("injuries", []):
+                ath = i.get("athlete") or {}
+                det = i.get("details") or {}
+                out["injuries"].append({
+                    "p": ath.get("displayName", ""), "team": tm.get("displayName", ""),
+                    "s": i.get("status", ""), "w": det.get("type", "") or det.get("location", ""),
+                    "x": i.get("shortComment", ""), "t": i.get("date", "")})
+    except Exception:
+        pass
+    return out
+
+
+@app.route("/api/news")
+def api_news():
+    # Public ESPN NFL news and injury report, cached 10 minutes. The page matches it to starters.
+    now = time.time()
+    if _news["data"] is not None and now - _news["t"] < 600:
+        return jsonify(_news["data"])
+    data = build_news()
+    if data["articles"] or data["injuries"]:
+        _news.update(t=now, data=data)
+    elif _news["data"] is not None:
+        return jsonify(_news["data"])
+    return jsonify(data)
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")

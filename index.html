@@ -337,6 +337,7 @@
   .mu-r { display: grid; grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr); gap: 8px; font-size: .95rem; padding-top: 4px; margin-top: 4px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
   .mu-r span:nth-child(2) { text-align: center; color: var(--muted); font-size: .85rem; }
   .mu-r span:last-child { text-align: right; }
+  .prizeitem a.pn { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
   .mu-n { color: var(--gold-soft); font-size: .88rem; margin-top: 6px; }
   .dot2 { fill: var(--muted); opacity: .5; }
   .nowd { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
@@ -409,6 +410,7 @@
     <button role="tab" id="tab-players" aria-selected="false" data-tab="players">Players</button>
     <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
     <button role="tab" id="tab-stacks" aria-selected="false" data-tab="stacks">Stacks</button>
+    <button role="tab" id="tab-news" aria-selected="false" data-tab="news">News</button>
   </nav>
 
   <div id="sample" class="note" hidden>Example data. The league appears here once the first week is final.</div>
@@ -512,6 +514,10 @@
       <div id="x-stacks"></div>
     </section>
 
+    <section id="p-news" hidden>
+      <div id="x-news"></div>
+    </section>
+
     <section id="p-odds" hidden>
       <div id="x-odds"></div>
     </section>
@@ -529,7 +535,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -1580,6 +1586,72 @@
     host.appendChild(el('p', 'cap', 'Averages over the weeks a player was started. One huge or empty game moves these a lot, and a few weeks of data rarely predicts the next one.'));
   }
 
+
+  // ---- News: injuries and headlines for Week 5 starters ----
+  var NEWS = null, NEWSAT = 0;
+  function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim(); }
+  function ago(iso) {
+    var t = Date.parse(iso); if (!t) return '';
+    var m = Math.max(0, (Date.now() - t) / 60000);
+    if (m < 60) return Math.round(m) + 'm ago';
+    if (m < 1440) return Math.round(m / 60) + 'h ago';
+    return Math.round(m / 1440) + 'd ago';
+  }
+  function loadNews() {
+    if (Date.now() - NEWSAT < 300000 && NEWS) return;
+    NEWSAT = Date.now();
+    fetch('/api/news').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      NEWS = d || { articles: [], injuries: [] };
+      if (tab === 'news') renderNews();
+    }).catch(function () { NEWS = NEWS || { articles: [], injuries: [] }; if (tab === 'news') renderNews(); });
+  }
+  function renderNews() {
+    var host = $('x-news'); host.textContent = '';
+    loadNews();
+    if (!UP || !UP.lineups) { host.appendChild(el('p', 'cap', 'Week 5 lineups are not loaded yet.')); return; }
+    if (!NEWS) { host.appendChild(el('p', 'cap', 'Loading news...')); return; }
+    var teams = state.teams, own = {};
+    Object.keys(UP.lineups).forEach(function (ti) {
+      UP.lineups[ti].forEach(function (p) { own[normName(p.p)] = { team: teams[ti] || ('Team ' + ti), p: p }; });
+    });
+    host.appendChild(el('p', 'cap', 'Starters in the Week 5 lineups only, matched by name to the public ESPN NFL injury report and headlines. Matching is by name, so check the link before acting. Updates about every 10 minutes. ' + (NEWS.injuries.length || NEWS.articles.length ? '' : 'The news feed returned nothing right now.')));
+    var rank = { out: 0, doubtful: 1, 'injured reserve': 0, questionable: 2, 'day-to-day': 3 };
+    var inj = [];
+    NEWS.injuries.forEach(function (i) {
+      var o = own[normName(i.p)]; if (!o) return;
+      inj.push({ o: o, i: i, r: rank[String(i.s).toLowerCase()] === undefined ? 4 : rank[String(i.s).toLowerCase()] });
+    });
+    inj.sort(function (a, b) { return a.r - b.r || (a.o.team < b.o.team ? -1 : 1); });
+    sec(host, 'Injury report', true);
+    if (!inj.length) host.appendChild(el('p', 'cap', 'No listed injuries among Week 5 starters.'));
+    else put(host, [['Team', 'l'], ['Player', 'l'], ['Slot', ''], ['Status', 'l'], ['Detail', 'l'], ['Proj', '']],
+      inj.map(function (x) { return [[x.o.team, 'l team'], [x.o.p.p, 'l'], [x.o.p.s, ''], [x.i.s, 'l'], [(x.i.w ? x.i.w + '. ' : '') + (x.i.x || ''), 'l'], [f1(x.o.p.proj), '']]; }));
+    var hits = [];
+    NEWS.articles.forEach(function (a) {
+      var who = {}, txt = normName(a.h + ' ' + a.d);
+      (a.n || []).forEach(function (n) { if (own[normName(n)]) who[normName(n)] = 1; });
+      Object.keys(own).forEach(function (k) { if (k.length > 6 && txt.indexOf(k) >= 0) who[k] = 1; });
+      var ks = Object.keys(who); if (ks.length) hits.push({ a: a, ks: ks });
+    });
+    sec(host, 'Headlines on your starters');
+    if (!hits.length) host.appendChild(el('p', 'cap', 'No recent headlines mention a Week 5 starter.'));
+    hits.slice(0, 25).forEach(function (h) {
+      var box = el('div', 'prizeitem'), pw = el('span', 'pw', ago(h.a.t)); pw.style.minWidth = '4.6rem';
+      var link = el(h.a.u ? 'a' : 'span', 'pn', h.a.h);
+      if (h.a.u) { link.href = h.a.u; link.target = '_blank'; link.rel = 'noopener'; }
+      var tags = h.ks.map(function (k) { return own[k].p.p + ' (' + own[k].team + ')'; }).join(', ');
+      box.appendChild(pw); box.appendChild(link); box.appendChild(el('span', 'ps', tags));
+      host.appendChild(box);
+    });
+    sec(host, 'League-wide headlines');
+    NEWS.articles.slice(0, 10).forEach(function (a) {
+      var box = el('div', 'prizeitem'), pw = el('span', 'pw', ago(a.t)); pw.style.minWidth = '4.6rem';
+      var link = el(a.u ? 'a' : 'span', 'pn', a.h);
+      if (a.u) { link.href = a.u; link.target = '_blank'; link.rel = 'noopener'; }
+      box.appendChild(pw); box.appendChild(link); host.appendChild(box);
+    });
+  }
+
   function loadLU() {
     fetch('/api/lineups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var sig = JSON.stringify(d && d.weeks || null);
@@ -1593,6 +1665,7 @@
       if (sig === upSig) return;
       upSig = sig; OUT = null;
       UP = d && d.matchups && d.lineups ? d : null;
+      if (tab === 'news') renderNews();
       if (LUTABS.indexOf(tab) >= 0) renderCurrent();
     }).catch(function () {});
   }
@@ -1843,7 +1916,7 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
-    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks };
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews };
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   function setTab(t) {
     if (replaying) return;
