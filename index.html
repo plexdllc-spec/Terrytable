@@ -354,7 +354,10 @@
   .ni { padding: 9px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; white-space: normal; }
   .ni:first-child { border-top: 0; }
   .ni-h { font-weight: 700; }
+  .nt-b > .ni-h { margin-top: 12px; color: var(--gold); }
+  .nt-b > .ni-h:first-child { margin-top: 4px; }
   a.ni-h { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
+  .ni-s.neg { color: var(--neg); font-weight: 700; }
   .ni-s { color: var(--gold-soft); font-size: .88rem; margin-top: 2px; }
   .ni-t { color: var(--muted); font-size: .9rem; margin-top: 2px; }
   .prizeitem { flex-wrap: wrap; overflow-wrap: anywhere; }
@@ -1735,42 +1738,55 @@
   function renderNews() {
     var host = $('x-news'); host.textContent = '';
     loadNews();
-    if (!UP || !UP.lineups) { host.appendChild(el('p', 'cap', 'Week 5 lineups are not loaded yet.')); return; }
-    if (!NEWS) { host.appendChild(el('p', 'cap', 'Loading news...')); return; }
-    var teams = state.teams, own = {};
-    Object.keys(UP.lineups).forEach(function (ti) {
-      UP.lineups[ti].forEach(function (p) { own[normName(p.p)] = { team: teams[ti] || ('Team ' + ti), p: p }; });
+    if (!UP || !UP.lineups || !UP.matchups) { host.appendChild(el('p', 'cap', 'Upcoming week lineups are not loaded yet.')); return; }
+    var teams = state.teams, inj = {}, FEED = (NEWS && NEWS.injuries) || [];
+    FEED.forEach(function (i) { inj[normName(i.p)] = i; });
+    var YF = { O: 'Out', Q: 'Questionable', IR: 'Injured reserve', BYE: 'On bye' };
+    function review(ti) {
+      var out = [];
+      (UP.lineups[ti] || []).forEach(function (p) {
+        var e = inj[normName(p.p)], es = e ? String(e.s).toLowerCase() : '', ys = p.f || '';
+        var swap = ys === 'O' || ys === 'IR' || ys === 'BYE' || es === 'out' || es === 'injured reserve' || es === 'doubtful' || (!p.proj && !ys);
+        var q = !swap && (ys === 'Q' || es === 'questionable' || es === 'day-to-day');
+        if (!swap && !q) return;
+        var label = ys ? YF[ys] : (e ? e.s : 'Projected 0');
+        if (e && ys && String(e.s).toLowerCase() !== label.toLowerCase() && es !== 'out') label += ' (ESPN: ' + e.s + ')';
+        out.push({ p: p, swap: swap, label: label, detail: e ? ((e.w ? e.w + '. ' : '') + (e.x || '')) : '' });
+      });
+      out.sort(function (a, b) { return (b.swap ? 1 : 0) - (a.swap ? 1 : 0); });
+      return out;
+    }
+    var all = UP.matchups.map(function (m) { return { m: m, a: review(m.a), b: review(m.b) }; });
+    var swaps = [];
+    all.forEach(function (x) {
+      [[x.m.a, x.a], [x.m.b, x.b]].forEach(function (t) {
+        var n = t[1].filter(function (r) { return r.swap; });
+        if (n.length) swaps.push(teams[t[0]] + ': ' + n.map(function (r) { return r.p.p + ' (' + r.label.toLowerCase() + ')'; }).join(', '));
+      });
     });
-    host.appendChild(el('p', 'cap', 'Starters in the Week 5 lineups only, matched by name to the public ESPN NFL injury report. Updates about every 10 minutes. ' + (NEWS.injuries.length ? '' : 'The injury feed returned nothing right now.')));
-    var rank = { out: 0, doubtful: 1, 'injured reserve': 0, questionable: 2, 'day-to-day': 3 };
-    var by = {};
-    function bucket(ti) { return by[ti] || (by[ti] = { inj: [], news: [] }); }
-    var ownTeam = {};
-    Object.keys(UP.lineups).forEach(function (ti) { UP.lineups[ti].forEach(function (p) { ownTeam[normName(p.p)] = ti; }); });
-    NEWS.injuries.forEach(function (i) {
-      var k = normName(i.p); if (!own[k]) return;
-      var st = String(i.s).toLowerCase();
-      bucket(ownTeam[k]).inj.push({ p: own[k].p, i: i, r: rank[st] === undefined ? 4 : rank[st] });
-    });
-    var order = Object.keys(UP.lineups).sort(function (a, b) {
-      var x = by[a] || { inj: [], news: [] }, y = by[b] || { inj: [], news: [] };
-      return y.inj.length - x.inj.length || a - b;
-    });
-    sec(host, 'By team', true);
-    order.forEach(function (ti) {
-      var b = by[ti] || { inj: [], news: [] };
+    var cap = el('p', 'cap', 'Week ' + UP.week + ' starters only. Swap needed means out, on bye, injured reserve, doubtful or projected at 0. Status comes from the Yahoo lineup screens and, when available, the public ESPN injury report.' + (FEED.length ? '' : ' The ESPN feed is not available right now, so only Yahoo flags show.'));
+    cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'Lineup swaps needed', true);
+    if (!swaps.length) host.appendChild(el('p', 'cap', 'No starter needs a swap right now.'));
+    swaps.forEach(function (t) { var b = el('div', 'prizeitem'); b.appendChild(el('span', 'pn', t)); host.appendChild(b); });
+    sec(host, 'By matchup');
+    all.forEach(function (x) {
       var det = el('details', 'nteam'), sm = el('summary');
-      sm.appendChild(el('span', 'nt-n', teams[ti] || ('Team ' + ti)));
-      sm.appendChild(el('span', 'nt-c', b.inj.length + ' injur' + (b.inj.length === 1 ? 'y' : 'ies')));
+      sm.appendChild(el('span', 'nt-n', teams[x.m.a] + ' vs ' + teams[x.m.b]));
+      var ns = x.a.concat(x.b).filter(function (r) { return r.swap; }).length, nq = x.a.concat(x.b).length - ns;
+      sm.appendChild(el('span', 'nt-c', ns + ' swap' + (ns === 1 ? '' : 's') + ', ' + nq + ' questionable'));
       det.appendChild(sm);
       var body = el('div', 'nt-b');
-      if (!b.inj.length) body.appendChild(el('p', 'cap', 'No listed injuries among this team\'s starters.'));
-      b.inj.sort(function (x, y) { return x.r - y.r; }).forEach(function (x) {
-        var row = el('div', 'ni');
-        row.appendChild(el('div', 'ni-h', x.p.p + ' (' + x.p.s + ', proj ' + f1(x.p.proj) + ')'));
-        row.appendChild(el('div', 'ni-s', x.i.s + (x.i.w ? ': ' + x.i.w : '')));
-        if (x.i.x) row.appendChild(el('div', 'ni-t', x.i.x));
-        body.appendChild(row);
+      [[x.m.a, x.a], [x.m.b, x.b]].forEach(function (t) {
+        body.appendChild(el('div', 'ni-h', teams[t[0]]));
+        if (!t[1].length) body.appendChild(el('div', 'ni-t', 'All starters healthy and playing.'));
+        t[1].forEach(function (r) {
+          var row = el('div', 'ni');
+          row.appendChild(el('div', 'ni-h', r.p.p + ' (' + r.p.s + ', ' + r.p.t + ', proj ' + f1(r.p.proj) + ')'));
+          row.appendChild(el('div', r.swap ? 'ni-s neg' : 'ni-s', (r.swap ? 'Swap needed: ' : 'Watch: ') + r.label));
+          if (r.detail) row.appendChild(el('div', 'ni-t', r.detail));
+          body.appendChild(row);
+        });
       });
       det.appendChild(body); host.appendChild(det);
     });
