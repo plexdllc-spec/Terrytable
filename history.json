@@ -31,7 +31,7 @@
 {
 "r": 4,
 "team": "Yordy",
-"mgr": "(hidden)",
+"mgr": "Jordan",
 "w": 10,
 "l": 3,
 "pf": 1566.08,
@@ -58,7 +58,7 @@
 {
 "r": 7,
 "team": "King of the Mermen",
-"mgr": "(hidden)",
+"mgr": "Dave",
 "w": 6,
 "l": 7,
 "pf": 1353.84,
@@ -108,6 +108,226 @@
 "l": 12,
 "pf": 1171.96,
 "pa": 1453.74
+}
+],
+"2014": [
+{
+"r": 1,
+"team": "Dean VIII",
+"w": 12,
+"l": 1,
+"pf": 1662.81,
+"pa": 1285.12,
+"mgr": "Corey"
+},
+{
+"r": 2,
+"team": "Green Eggs and Hamas",
+"w": 10,
+"l": 3,
+"pf": 1456.52,
+"pa": 1309.93,
+"mgr": "Weinjew"
+},
+{
+"r": 3,
+"team": "Jaboo's Crab Shack",
+"w": 8,
+"l": 5,
+"pf": 1381.04,
+"pa": 1298.63,
+"mgr": "Daniel"
+},
+{
+"r": 4,
+"team": "The Mamba's HOT FIYA",
+"w": 7,
+"l": 6,
+"pf": 1276.97,
+"pa": 1310.37,
+"mgr": "James"
+},
+{
+"r": 5,
+"team": "Let Misi your TD s",
+"w": 7,
+"l": 6,
+"pf": 1344.54,
+"pa": 1206.63,
+"mgr": "DanielM"
+},
+{
+"r": 6,
+"team": "Yordy",
+"w": 7,
+"l": 6,
+"pf": 1231.86,
+"pa": 1238.0,
+"mgr": "Jordan"
+},
+{
+"r": 7,
+"team": "Yin Yang Fart Squad",
+"w": 4,
+"l": 9,
+"pf": 1193.88,
+"pa": 1386.55,
+"mgr": "Shaq"
+},
+{
+"r": 8,
+"team": "King of the Mermen",
+"w": 6,
+"l": 7,
+"pf": 1395.22,
+"pa": 1387.68,
+"mgr": "Dave"
+},
+{
+"r": 9,
+"team": "Gaza's Finest",
+"w": 3,
+"l": 10,
+"pf": 1201.8,
+"pa": 1379.22,
+"mgr": "Marc"
+},
+{
+"r": 10,
+"team": "Golda Meir",
+"w": 6,
+"l": 7,
+"pf": 1277.53,
+"pa": 1408.22,
+"mgr": "Aron"
+},
+{
+"r": 11,
+"team": "STEVE STRAUCH",
+"w": 4,
+"l": 9,
+"pf": 1310.89,
+"pa": 1419.99,
+"mgr": "Joshua"
+},
+{
+"r": 12,
+"team": "Kaaya Ocho",
+"w": 4,
+"l": 9,
+"pf": 1337.76,
+"pa": 1440.48,
+"mgr": "Danny"
+}
+],
+"2015": [
+{
+"r": 1,
+"team": "Happiness and Kisses",
+"w": 11,
+"l": 2,
+"pf": 1589.41,
+"pa": 1378.41,
+"mgr": "Joshua"
+},
+{
+"r": 2,
+"team": "Lee Eekmikauhnt",
+"w": 6,
+"l": 7,
+"pf": 1467.86,
+"pa": 1393.13,
+"mgr": "Shaq"
+},
+{
+"r": 3,
+"team": "Shooting Sparkles",
+"w": 7,
+"l": 6,
+"pf": 1425.21,
+"pa": 1389.18,
+"mgr": "James"
+},
+{
+"r": 4,
+"team": "Jaboo's Crab Shack",
+"w": 11,
+"l": 2,
+"pf": 1679.59,
+"pa": 1352.48,
+"mgr": "Daniel"
+},
+{
+"r": 5,
+"team": "Dalvin be Free IX",
+"w": 11,
+"l": 2,
+"pf": 1556.78,
+"pa": 1356.45,
+"mgr": "Corey"
+},
+{
+"r": 6,
+"team": "ISIS Peace Coalition",
+"w": 9,
+"l": 4,
+"pf": 1589.41,
+"pa": 1415.09,
+"mgr": "Weinjew"
+},
+{
+"r": 7,
+"team": "Let Misi your TD s",
+"w": 4,
+"l": 9,
+"pf": 1422.97,
+"pa": 1487.03,
+"mgr": "DanielM"
+},
+{
+"r": 8,
+"team": "Golda Meir",
+"w": 3,
+"l": 10,
+"pf": 1244.32,
+"pa": 1449.35,
+"mgr": "Aron"
+},
+{
+"r": 9,
+"team": "Shithoused Weinbergs",
+"w": 4,
+"l": 9,
+"pf": 1370.39,
+"pa": 1583.73,
+"mgr": "Marc"
+},
+{
+"r": 10,
+"team": "King of the Mermen",
+"w": 6,
+"l": 7,
+"pf": 1408.46,
+"pa": 1346.7,
+"mgr": "Dave"
+},
+{
+"r": 11,
+"team": "Kaaya Ocho",
+"w": 2,
+"l": 11,
+"pf": 1219.23,
+"pa": 1617.34,
+"mgr": "Danny"
+},
+{
+"r": 12,
+"team": "Yordy",
+"w": 4,
+"l": 9,
+"pf": 1166.67,
+"pa": 1371.41,
+"mgr": "Jordan"
 }
 ],
 "2016": [
