@@ -2105,109 +2105,66 @@
   if (!cv || !cv.getContext) return;
   var mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   if (mq && mq.matches) { cv.style.display = 'none'; return; }
-  var mcx = cv.getContext('2d'), oc = document.createElement('canvas'), cx = oc.getContext('2d'), W = 0, H = 0, dpr = 1, phone = false, figs = [], last = 0, run = true;
-  var D = Math.PI / 180;
+  var cx = cv.getContext('2d'), W = 0, H = 0, dpr = 1, phone = false, run = true, last = 0, off = 0;
+  var pulses = [], dots = [];
   function size() {
     phone = window.innerWidth < 700;
     dpr = Math.min(window.devicePixelRatio || 1, phone ? 1.25 : 1.5);
     W = window.innerWidth; H = window.innerHeight;
-    cv.width = oc.width = Math.round(W * dpr); cv.height = oc.height = Math.round(H * dpr);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dots = [];
+    for (var i = 0; i < (phone ? 26 : 60); i++) dots.push({ x: Math.random(), y: Math.random(), v: 0.004 + Math.random() * 0.012, r: 0.6 + Math.random() * 1.4, p: Math.random() * 6.3 });
   }
-  function mk(kind, depth, dir, y, speed, off) {
-    return { kind: kind, s: depth, dir: dir, y: y, v: speed, x: off, t: Math.random() * 6 };
-  }
-  function build() {
-    figs = [
-      mk('runner', 1.5, 1, 0.80, 70, 0.1), mk('receiver', 1.2, -1, 0.55, 58, 0.7),
-      mk('runner', 0.9, 1, 0.34, 46, 0.45), mk('qb', 1.3, 1, 0.9, 0, 0.18),
-      mk('runner', 1.0, -1, 0.18, 52, 0.9), mk('receiver', 0.8, 1, 0.68, 40, 0.3)
-    ];
-    if (phone) figs = [figs[0], figs[1], figs[3]];
-  }
-  function limb(x0, y0, a, len, w) {
-    var x1 = x0 + Math.sin(a) * len, y1 = y0 + Math.cos(a) * len;
-    cx.lineWidth = w * 1.3; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke();
-    return [x1, y1];
-  }
-  function person(f, p, jump) {
-    // side view, facing +x. origin at the hip. angles measured from straight down, forward positive.
-    var lean = 14 * D, sx = Math.sin(lean) * 34, sy = -Math.cos(lean) * 34;
-    cx.lineCap = 'round'; cx.lineJoin = 'round';
-    var leg = function (ph) {
-      var th = Math.sin(ph) * 52 * D, kn = Math.max(0, -Math.sin(ph - 1.1)) * 78 * D;
-      var k = limb(0, 0, th, 19, 8); limb(k[0], k[1], th - kn, 19, 7);
-    };
-    var arm = function (ph, up) {
-      var a = up ? (-160 * D) : Math.sin(ph) * 55 * D, e = up ? (-20 * D) : -85 * D;
-      var h = limb(sx, sy + 4, a, 14, 6); limb(h[0], h[1], a + e, 13, 5);
-    };
-    leg(p); leg(p + Math.PI);
-    cx.lineWidth = 13; cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(sx, sy); cx.stroke();
-    cx.lineWidth = 16; cx.beginPath(); cx.moveTo(sx - 4, sy + 1); cx.lineTo(sx + 5, sy - 1); cx.stroke();
-    arm(p + Math.PI, jump); arm(p, jump);
-    cx.beginPath(); cx.arc(sx + 3, sy - 10, 7.5, 0, 6.3); cx.fill();
-    cx.beginPath(); cx.arc(sx + 3, sy - 10, 7.5, 0, 6.3); cx.stroke();
-  }
-  function ball(x, y, r, ang) {
-    cx.save(); cx.translate(x, y); cx.rotate(ang);
-    cx.beginPath(); cx.ellipse(0, 0, 11 * r, 6.5 * r, 0, 0, 6.3); cx.fill(); cx.restore();
-  }
-  var qbT = 0;
+  var RAYS = 14;
   function frame(ts) {
     if (!run) return;
     requestAnimationFrame(frame);
-    var dt = Math.min(0.05, (ts - last) / 1000 || 0.016);
     if (phone && ts - last < 33) return;
-    last = ts;
+    var dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
+    off = (off + dt * 0.22) % 1;
     cx.clearRect(0, 0, W, H);
-    figs.forEach(function (f, n) {
-      f.t += dt;
-      var col = n % 2 ? '#f2b632' : '#d63462';
-      cx.fillStyle = col; cx.strokeStyle = col;
-      var sc = f.s * (phone ? 1.4 : 1.75) * Math.min(1.5, Math.max(0.8, H / 800));
-      if (f.kind === 'qb') {
-        qbT += dt;
-        var cyc = qbT % 5, bx = W * f.x, by = H * f.y;
-        cx.save(); cx.translate(bx, by); cx.scale(sc * 1.4, sc * 1.4);
-        // planted figure with a throwing arm
-        cx.lineCap = 'round';
-        limb(0, 0, 0.35, 19, 8); limb(-3, 0, -0.3, 19, 8);
-        cx.lineWidth = 13; cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(3, -34); cx.stroke();
-        cx.lineWidth = 16; cx.beginPath(); cx.moveTo(-3, -33); cx.lineTo(8, -35); cx.stroke();
-        var throwA = cyc < 1.2 ? -150 * D + cyc * 20 * D : (cyc < 1.6 ? -125 * D + (cyc - 1.2) * 400 * D : 35 * D);
-        var h = limb(3, -30, throwA, 14, 6); limb(h[0], h[1], throwA - 20 * D, 13, 5);
-        limb(3, -30, 70 * D, 14, 6);
-        cx.beginPath(); cx.arc(6, -44, 7.5, 0, 6.3); cx.fill();
-        cx.restore();
-        if (cyc > 1.5 && cyc < 4.4) {
-          var u = (cyc - 1.5) / 2.9, tx = W * 0.82, ty = H * 0.5;
-          var px = bx + 16 + (tx - bx) * u, py = by - 50 * sc + (ty - by + 50 * sc) * u - Math.sin(u * Math.PI) * H * 0.28;
-          ball(px, py, sc * 1.2, -0.5 + u * 1.9 + (phone ? 0 : u * 0));
-        }
-        return;
-      }
-      f.x += f.dir * f.v * dt / W;
-      if (f.x > 1.12) f.x = -0.12; if (f.x < -0.12) f.x = 1.12;
-      var phase = f.t * (f.v / 7.5 + 4), jump = false, jy = 0;
-      if (f.kind === 'receiver') {
-        var q = (f.t % 6);
-        if (q > 4 && q < 5.4) { jump = true; jy = -Math.sin((q - 4) / 1.4 * Math.PI) * 26 * sc; }
-      }
-      cx.save();
-      cx.translate(W * f.x, H * f.y + jy);
-      cx.scale(f.dir * sc, sc);
-      person(f, phase, jump);
-      if (f.kind === 'runner' && n % 2 === 0) { // ball tucked under the arm
-        ball(8, -24, 0.9, 0.2);
-      }
-      cx.restore();
+    var hy = H * 0.52, vx = W / 2, floor = H - hy;
+    // horizon glow
+    var g = cx.createLinearGradient(0, hy - 90, 0, hy + 40);
+    g.addColorStop(0, 'rgba(242,182,50,0)'); g.addColorStop(0.7, 'rgba(242,182,50,0.07)'); g.addColorStop(1, 'rgba(155,28,63,0)');
+    cx.fillStyle = g; cx.fillRect(0, hy - 90, W, 130);
+    // receding lines, spacing grows toward the viewer
+    cx.lineWidth = 1;
+    for (var i = 0; i < 16; i++) {
+      var t = (i + off) / 16, y = hy + floor * t * t;
+      cx.strokeStyle = 'rgba(214,52,98,' + (0.05 + 0.2 * t).toFixed(3) + ')';
+      cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke();
+    }
+    // rays fanning out from the vanishing point
+    var spread = W * 1.6;
+    for (var k = -RAYS; k <= RAYS; k++) {
+      var bx = vx + k * (spread / RAYS / 2);
+      cx.strokeStyle = 'rgba(214,52,98,' + (k % 4 === 0 ? 0.2 : 0.11) + ')';
+      cx.beginPath(); cx.moveTo(vx + k * 4, hy); cx.lineTo(bx, H); cx.stroke();
+    }
+    cx.strokeStyle = 'rgba(242,182,50,0.35)';
+    cx.beginPath(); cx.moveTo(0, hy); cx.lineTo(W, hy); cx.stroke();
+    // light pulses racing down the rays
+    if (Math.random() < dt * (phone ? 0.7 : 1.3)) pulses.push({ k: Math.round((Math.random() * 2 - 1) * RAYS), t: 0, v: 0.35 + Math.random() * 0.35 });
+    pulses = pulses.filter(function (p) {
+      p.t += p.v * dt; if (p.t >= 1) return false;
+      var bx = vx + p.k * (spread / RAYS / 2), x0 = vx + p.k * 4;
+      var f0 = Math.pow(p.t, 1.7), f1 = Math.pow(Math.max(0, p.t - 0.09), 1.7);
+      cx.strokeStyle = 'rgba(242,182,50,' + (0.75 * (1 - p.t * 0.5)).toFixed(3) + ')'; cx.lineWidth = 1 + 2 * p.t; cx.lineCap = 'round';
+      cx.beginPath();
+      cx.moveTo(x0 + (bx - x0) * f1, hy + floor * f1); cx.lineTo(x0 + (bx - x0) * f0, hy + floor * f0); cx.stroke();
+      return true;
     });
-    mcx.setTransform(1, 0, 0, 1, 0, 0); mcx.clearRect(0, 0, cv.width, cv.height);
-    mcx.globalAlpha = 0.12; mcx.drawImage(oc, 0, 0);
+    // drifting data motes
+    dots.forEach(function (d) {
+      d.y -= d.v * dt; d.p += dt * 2; if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); }
+      cx.fillStyle = 'rgba(242,182,50,' + (0.12 + 0.28 * (0.5 + 0.5 * Math.sin(d.p))).toFixed(3) + ')';
+      cx.beginPath(); cx.arc(d.x * W, d.y * H, d.r, 0, 6.3); cx.fill();
+    });
   }
-  size(); build();
-  window.addEventListener('resize', function () { var was = phone; size(); if (was !== phone) build(); });
+  size();
+  window.addEventListener('resize', size);
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) run = false; else if (!run) { run = true; last = performance.now(); requestAnimationFrame(frame); }
   });
