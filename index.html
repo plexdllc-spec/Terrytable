@@ -2144,6 +2144,7 @@
 
   function endp(t) { return /[.!?]$/.test(t) ? t : t + '.'; }
   var recapWk = null;
+  function ordn(n) { var t = n % 100; return n + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')); }
   function renderRecap() {
     var host = $('x-recap'); host.textContent = '';
     var d = getData();
@@ -2184,6 +2185,26 @@
       var row = el('div', 'prizeitem'), pw = el('span', 'pw', it[0]); pw.style.minWidth = '8.2rem';
       row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); host.appendChild(row);
     });
+    if (!HW) { loadHW(function () { if (tab === 'recap') renderRecap(); }); }
+    else if (Object.keys(HW).length) {
+      var pool = [];
+      Object.keys(HW).sort().forEach(function (y) { Object.keys(HW[y]).forEach(function (m) { HW[y][m].p.forEach(function (v, k) { pool.push({ v: v, k: y + ':' + m + ':' + (k + 1) }); }); }); });
+      d.rows.forEach(function (r) { Object.keys(r.wk).forEach(function (w) { pool.push({ v: r.wk[w].pts, k: '2026:' + (MGR26[r.team] || r.team) + ':' + w }); }); });
+      var hiP = pool.slice().sort(function (a, b) { return b.v - a.v; }), loP = hiP.slice().reverse(), alerts = [];
+      sc.forEach(function (x) {
+        var key = '2026:' + (MGR26[T[x.i]] || T[x.i]) + ':' + n, ih = -1, il = -1;
+        hiP.forEach(function (q, k) { if (q.k === key) ih = k; }); loP.forEach(function (q, k) { if (q.k === key) il = k; });
+        var nm = T[x.i];
+        if (ih >= 0 && ih < 10) alerts.push([ih === 0 ? 'New record high' : 'Top 10 week', nm + ' scored ' + f2(x.s) + ', the ' + (ih === 0 ? 'highest' : ordn(ih + 1) + ' highest') + ' of ' + pool.length + ' team-weeks since 2021.']);
+        if (il >= 0 && il < 10) alerts.push([il === 0 ? 'New record low' : 'Bottom 10 week', nm + ' scored ' + f2(x.s) + ', the ' + (il === 0 ? 'lowest' : ordn(il + 1) + ' lowest') + ' of ' + pool.length + ' team-weeks since 2021.']);
+      });
+      sec(host, 'Record watch');
+      if (!alerts.length) host.appendChild(el('p', 'cap', 'No top 10 or bottom 10 scores since 2021 this week.'));
+      alerts.forEach(function (it) {
+        var row = el('div', 'prizeitem'), pw = el('span', 'pw', it[0]); pw.style.minWidth = '8.2rem';
+        row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); host.appendChild(row);
+      });
+    }
     sec(host, 'All games');
     put(host, [['Winner', 'l'], ['Score', ''], ['Loser', 'l'], ['Score', ''], ['Margin', '']], gs.map(function (g) { return [[T[g.w], 'l team'], [f2(g.ws), ''], [T[g.l], 'l'], [f2(g.ls), ''], [f2(g.ws - g.ls), '']]; }));
   }
@@ -2716,6 +2737,54 @@
     sec(host, 'Lowest single weeks');
     put(host, [['#', ''], ['Manager', 'l'], ['When', 'l'], ['Pts', '']], gl(hi.slice().reverse()));
 
+    // playoff base rates and cutoffs from the sheet seasons
+    var SS = [], kk = d.sample ? 4 : Math.max(1, d.keys.length);
+    ys.forEach(function (y) {
+      var ms = Object.keys(HW[y]), arr = ms.map(function (m) {
+        var lp = 0, lpk = 0, pf = 0, w = 0, ex = 0, p = HW[y][m].p;
+        for (var k = 0; k < 14; k++) { lp += HW[y][m].lp[k]; if (k < kk) lpk += HW[y][m].lp[k]; pf += p[k]; w += HW[y][m].w[k]; }
+        return { m: m, lp: lp, lpk: lpk, pf: pf };
+      });
+      arr.sort(function (a, b) { return (b.lp - a.lp) || (b.pf - a.pf); });
+      arr.forEach(function (r, k) { r.rank = k + 1; });
+      SS.push({ y: y, arr: arr, c6: arr[5].lp, c2: arr[1].lp });
+    });
+    sec(host, 'Playoff cutoffs by season');
+    var c6s = SS.map(function (q) { return q.c6; }).sort(function (a, b) { return a - b; }), c2s = SS.map(function (q) { return q.c2; }).sort(function (a, b) { return a - b; });
+    var crow = SS.map(function (q) { return [[q.y, 'l'], [String(q.c2), ''], [String(q.c6), '']]; });
+    crow.push([['Median', 'l team'], [String(c2s[Math.floor(c2s.length / 2)]), 'pos'], [String(c6s[Math.floor(c6s.length / 2)]), 'pos']]);
+    put(host, [['Season', 'l'], ['2nd place LP', ''], ['6th place LP', '']], crow);
+    if (!d.sample && d.keys.length) {
+      sec(host, 'Playoff base rate after Week ' + kk);
+      var all = []; SS.forEach(function (q) { q.arr.forEach(function (r) { all.push(r); }); });
+      var brow = d.rows.map(function (r) {
+        var cmp = all.filter(function (x) { return Math.abs(x.lpk - r.lp) <= 1; }), po = 0, by = 0;
+        cmp.forEach(function (x) { if (x.rank <= 6) po++; if (x.rank <= 2) by++; });
+        return { team: MGR26[r.team] || r.team, lp: r.lp, n: cmp.length, po: cmp.length ? po / cmp.length : null, by: cmp.length ? by / cmp.length : null };
+      });
+      put(host, [['Manager', 'l'], ['LP', ''], ['Similar', ''], ['Playoffs', ''], ['Bye', '']],
+        brow.map(function (r) { return [[r.team, 'l team'], [String(r.lp), ''], [String(r.n), ''], [r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '')], [r.by === null ? 'n/a' : Math.round(r.by * 100) + '%', '']]; }));
+    }
+    // luck and consistency from all-play
+    var LK = {};
+    ys.forEach(function (y) {
+      var ms = Object.keys(HW[y]);
+      ms.forEach(function (m) {
+        var o = LK[m] || (LK[m] = { n: m, w: 0, ex: 0, ps: [] });
+        for (var k = 0; k < 14; k++) {
+          var v = HW[y][m].p[k], beat = 0;
+          ms.forEach(function (z) { if (z !== m) { var u = HW[y][z].p[k]; beat += v > u ? 1 : (v === u ? 0.5 : 0); } });
+          o.ex += beat / (ms.length - 1); o.w += HW[y][m].w[k]; o.ps.push(v);
+        }
+      });
+    });
+    var lk = Object.keys(LK).map(function (k) { var o = LK[k], mu = mean(o.ps), sd = Math.sqrt(mean(o.ps.map(function (v) { return (v - mu) * (v - mu); }))); o.mu = mu; o.sd = sd; o.lo = Math.min.apply(null, o.ps); o.hi = Math.max.apply(null, o.ps); o.luck = o.w - o.ex; return o; });
+    sec(host, 'Luck since ' + ys[0]);
+    put(host, [['Manager', 'l'], ['Wins', ''], ['Expected', ''], ['Luck', '']],
+      lk.slice().sort(function (a, b) { return b.luck - a.luck; }).map(function (o) { return [[o.n, 'l team'], [String(o.w), ''], [o.ex.toFixed(1), ''], [signed(o.luck, f1), o.luck >= 0 ? 'pos' : 'neg']]; }));
+    sec(host, 'Consistency since ' + ys[0]);
+    put(host, [['Manager', 'l'], ['Avg', ''], ['Spread', ''], ['Low', ''], ['High', '']],
+      lk.slice().sort(function (a, b) { return a.sd - b.sd; }).map(function (o) { return [[o.n, 'l team'], [o.mu.toFixed(1), ''], [o.sd.toFixed(1), ''], [o.lo.toFixed(1), ''], [o.hi.toFixed(1), '']]; }));
     var wkNow = d.keys.length ? d.keys[d.keys.length - 1] : 0;
     if (!d.sample && d.keys.length) {
       sec(host, 'This season against the same weeks before');
