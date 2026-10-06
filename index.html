@@ -1506,6 +1506,23 @@
           [r.sos === null ? '' : signed(r.sos, f1), r.sos === null ? '' : (r.sos > 1 ? 'neg' : (r.sos < -1 ? 'pos' : ''))]];
       }));
     host.appendChild(el('p', 'cap', 'Schedule is the average strength of remaining opponents against the league average, in projected points. Plus means a tougher road, minus means an easier one.'));
+    sec(host, 'Path to the playoffs');
+    var left = WEEKS - s.start + 1, safe6 = pctile(c6, 0.9);
+    var curLP = {}; ids.forEach(function (i) { curLP[i] = cur[i].lp; });
+    var path = info.map(function (r) {
+      var mx = r.now + 3 * left, above = 0, reach = 0;
+      ids.forEach(function (j) { if (j === r.i) return; if (curLP[j] > mx) above++; if (curLP[j] + 3 * left >= r.now) reach++; });
+      var need = Math.max(0, m6 - r.now), pace = left ? need / left : 0, status, cls = '';
+      if (above >= 6) { status = 'Eliminated'; cls = 'neg'; }
+      else if (reach <= 5) { status = 'Clinched'; cls = 'pos'; }
+      else if (pace > 2.5 || r.po < 0.05) { status = 'Long shot'; cls = 'neg'; }
+      else if (r.po >= 0.9) { status = 'Strong'; cls = 'pos'; }
+      else status = 'In the race';
+      return [[r.team, 'l team'], [String(r.now), ''], [String(mx), ''], [status, cls], [String(m6), ''], [need > 0 ? String(need) : '0', ''],
+        [need > 0 ? f1(pace) : '0.0', pace > 2.5 ? 'neg' : ''], [String(safe6), '']];
+    });
+    put(host, [['Team', 'l'], ['LP', ''], ['Max', ''], ['Status', 'l'], ['Cutoff', ''], ['Need', ''], ['Per wk', ''], ['Safe', '']], path);
+    host.appendChild(el('p', 'cap', left + ' weeks left, 3 points possible per week. Max is today plus all remaining points. Cutoff is the median 6th place finish in the simulation, Need is the points still required to reach it, and Per wk is Need divided by weeks left (3.0 means winning and beating the average every week). Safe is the 90th percentile cutoff. Eliminated and Clinched are exact math, ignoring tiebreaks; Long shot means more than 2.5 per week or under 5% playoff odds.'));
     sec(host, 'Where each team finishes (league points)');
     var byMed = info.slice().sort(function (a, b) { return (b.med - a.med) || (b.po - a.po); });
     var cb = el('div', 'chartbox'); cb.style.marginTop = '8px';
