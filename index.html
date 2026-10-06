@@ -1512,6 +1512,14 @@
     cap.style.marginTop = '0'; host.appendChild(cap);
     var bt = o.bt;
     if (bt.n) host.appendChild(el('p', 'cap', 'Backtest on ' + bt.n + ' team-weeks: Yahoo alone missed by ' + f1(bt.y) + ' points on average. Adding a team-history adjustment gave ' + f1(bt.a) + '. Blending in recent scoring gave ' + f1(bt.b) + '. Weight on team history now: ' + f2(o.fm.k) + ' (0 means beating or missing projections looks like luck so far). Expect near coin flips unless the gap is large.'));
+    function ml(p) {
+      p = Math.min(0.99, Math.max(0.01, p));
+      var v = p >= 0.5 ? -100 * p / (1 - p) : 100 * (1 - p) / p;
+      v = Math.round(v / 5) * 5;
+      if (v > -100 && v < 100) v = v < 0 ? -100 : 100;
+      return (v > 0 ? '+' : '') + v;
+    }
+    host.appendChild(el('p', 'cap', 'Lines are fair, no vig. Spread is the forecast margin to the nearest half point (minus is the favorite). Money line is the win chance as American odds: minus means risk that much to win 100, plus means win that much on 100. Total is the two forecasts added.'));
     var box = el('div', 'mugrid');
     up.matchups.forEach(function (m) {
       var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
@@ -1523,6 +1531,10 @@
       var row = function (lbl, l, r) { var e = el('div', 'mu-r'); e.appendChild(el('span', '', l)); e.appendChild(el('span', '', lbl)); e.appendChild(el('span', '', r)); c.appendChild(e); };
       row('Win chance', Math.round(pa * 100) + '%', Math.round((1 - pa) * 100) + '%');
       row('Yahoo win chance', m.wa + '%', (100 - m.wa) + '%');
+      var sp = Math.round(Math.abs(fa - fb) * 2) / 2, spA = sp === 0 ? 'PK' : (fa >= fb ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (fb > fa ? '-' : '+') + sp.toFixed(1);
+      row('Spread', spA, spB);
+      row('Money line', ml(pa), ml(1 - pa));
+      row('Total', f1(fa + fb), f1(fa + fb));
       row('Forecast', f1(fa), f1(fb));
       row('Likely range', f0(fa - 1.2816 * sg) + ' to ' + f0(fa + 1.2816 * sg), f0(fb - 1.2816 * sg) + ' to ' + f0(fb + 1.2816 * sg));
       row('Yahoo projection', f2(m.pa), f2(m.pb));
@@ -1533,25 +1545,6 @@
       box.appendChild(c);
     });
     host.appendChild(box);
-    sec(host, 'Spreads and money lines');
-    host.appendChild(el('p', 'cap', 'Fair lines from the forecast, no vig. Spread is the forecast margin rounded to the nearest half point, total is the two forecasts added. Money line is the win chance converted to American odds, rounded to 5. Minus means favorite: risk that much to win 100. Plus means underdog: win that much on 100.'));
-    function ml(p) {
-      p = Math.min(0.99, Math.max(0.01, p));
-      var v = p >= 0.5 ? -100 * p / (1 - p) : 100 * (1 - p) / p;
-      v = Math.round(v / 5) * 5;
-      if (v > -100 && v < 100) v = v < 0 ? -100 : 100;
-      return (v > 0 ? '+' : '') + v;
-    }
-    var lines = up.matchups.map(function (m) {
-      var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
-      var fav = pa >= 0.5 ? a : b, dog = fav === a ? b : a, pf = fav === a ? pa : 1 - pa, mg = Math.abs(fa - fb);
-      var sp = Math.round(mg * 2) / 2;
-      return { fav: fav, dog: dog, pf: pf, sp: sp, tot: fa + fb, mg: mg };
-    }).sort(function (p, q) { return q.pf - p.pf; });
-    put(host, [['Favorite', 'l c0'], ['Spread', ''], ['Total', ''], ['ML fav', ''], ['Underdog', 'l'], ['ML dog', '']],
-      lines.map(function (r) {
-        return [[d.teams[r.fav], 'l c0 team'], [r.sp === 0 ? 'PK' : '-' + r.sp.toFixed(1), 'pos'], [r.tot.toFixed(1), ''], [ml(r.pf), 'pos'], [d.teams[r.dog], 'l'], [ml(1 - r.pf), '']];
-      }));
     sec(host, 'Lineup watch');
     var watch = [];
     ids.forEach(function (i) {
