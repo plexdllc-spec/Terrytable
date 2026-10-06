@@ -1663,16 +1663,17 @@
     years.forEach(function (y) {
       var rows = HIST[y], g = gamesIn(rows);
       rows.forEach(function (r) {
+        recs.push({ y: y, r: r, g: g });
+        if (r.mgr === '(hidden)') return;
         var m = M[r.mgr] || (M[r.mgr] = { n: r.mgr, s: 0, t1: 0, t2: 0, t3: 0, po: 0, w: 0, l: 0, pf: 0, g: 0, fin: 0, best: 99, teams: {} });
         m.s++; m.w += r.w; m.l += r.l; m.pf += r.pf; m.g += r.w + r.l; m.fin += r.r; m.best = Math.min(m.best, r.r);
         if (r.r === 1) m.t1++; if (r.r === 2) m.t2++; if (r.r === 3) m.t3++; if (r.r <= 6) m.po++;
-        recs.push({ y: y, r: r, g: g });
       });
       champs.push({ y: y, c: rows[0], s: rows[1] });
     });
     var list = Object.keys(M).map(function (k) { return M[k]; });
     list.sort(function (a, b) { return (b.t1 - a.t1) || (b.t2 - a.t2) || ((b.w / (b.w + b.l)) - (a.w / (a.w + a.l))); });
-    var cap = el('p', 'cap', 'Final standings from Yahoo for ' + years[0] + ' to ' + years[years.length - 1] + ' (' + years.length + ' seasons loaded), grouped by manager so team name changes do not matter. Final rank is the end of playoffs finish, so ranks 1 to 3 are champion, runner-up and third place. Playoffs counts finishes of 6th or better. Record is regular season.');
+    var cap = el('p', 'cap', 'Final standings from Yahoo for ' + years[0] + ' to ' + years[years.length - 1] + ' (' + years.length + ' seasons loaded), grouped by manager so team name changes do not matter. Final rank is the end of playoffs finish, so ranks 1 to 3 are champion, runner-up and third place. Playoffs counts finishes of 6th or better. Record is regular season. Managers Yahoo hides are left out of the manager table.');
     cap.style.marginTop = '0'; host.appendChild(cap);
     sec(host, 'All-time by manager', true);
     put(host, [['#', 'c1'], ['Manager', 'l c2'], ['Titles', ''], ['2nd', ''], ['3rd', ''], ['Playoffs', ''], ['Seasons', ''], ['Record', ''], ['Win %', ''], ['PF / game', ''], ['Avg finish', ''], ['Best', '']],
