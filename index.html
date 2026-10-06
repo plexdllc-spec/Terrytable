@@ -1850,25 +1850,33 @@
   }
   var profSel = null;
 
+  var PAID_THROUGH = 4;
   function renderPrizes() {
     var host = $('x-prizes'); host.textContent = '';
     var d = getData();
     if (d.sample) { host.appendChild(el('p', 'cap', 'Prizes appear once real weeks are loaded.')); return; }
-    var rows = d.rows, tot = {}, list = [];
+    var rows = d.rows, won = {}, owed = {}, list = [], sumW = 0, sumO = 0;
     d.keys.forEach(function (n) {
       var win = rows.filter(function (r) { return r.wk[n] && r.wk[n].top; });
-      win.forEach(function (r) { tot[r.i] = (tot[r.i] || 0) + PRIZE / win.length; });
-      list.push({ n: n, w: win });
+      win.forEach(function (r) {
+        var p = PRIZE / win.length; won[r.i] = (won[r.i] || 0) + p; sumW += p;
+        if (n > PAID_THROUGH) { owed[r.i] = (owed[r.i] || 0) + p; sumO += p; }
+      });
+      list.push({ n: n, w: win, paid: n <= PAID_THROUGH });
     });
-    var cap = el('p', 'cap', 'Highest score of the week wins $' + PRIZE + ' (split on an exact tie). Weeks counted: ' + d.keys.join(', ') + '. Weekly stats can still change until Yahoo finalizes them.'); cap.style.marginTop = '0'; host.appendChild(cap);
-    sec(host, 'Who is owed', true);
-    var owed = rows.filter(function (r) { return tot[r.i]; }).sort(function (a, b) { return tot[b.i] - tot[a.i] || b.pts - a.pts; });
-    var sum = 0; owed.forEach(function (r) { sum += tot[r.i]; });
-    put(host, [['Team', 'l'], ['Manager', 'l'], ['Weekly wins', ''], ['Owed', '']], owed.map(function (r) { return [[r.team, 'l team'], [MGR26[r.team] || '', 'l'], [String(r.tops), ''], ['$' + tot[r.i], 'pos']]; }));
-    host.appendChild(el('p', 'cap', 'Total prize money so far: $' + sum + '.'));
+    var cap = el('p', 'cap', 'Highest score of the week wins $' + PRIZE + ' (split on an exact tie). All prizes through Week ' + PAID_THROUGH + ' are paid. Weekly stats can still change until Yahoo finalizes them.'); cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, sumO ? 'Who is owed' : 'Nobody is owed anything', true);
+    if (sumO) {
+      put(host, [['Team', 'l'], ['Manager', 'l'], ['Owed', '']], rows.filter(function (r) { return owed[r.i]; }).sort(function (a, b) { return owed[b.i] - owed[a.i]; })
+        .map(function (r) { return [[r.team, 'l team'], [MGR26[r.team] || '', 'l'], ['$' + owed[r.i], 'pos']]; }));
+      host.appendChild(el('p', 'cap', 'Unpaid total: $' + sumO + '.'));
+    } else host.appendChild(el('p', 'cap', 'All $' + sumW + ' in prizes so far has been paid.'));
+    sec(host, 'Prize history');
+    put(host, [['Team', 'l'], ['Manager', 'l'], ['Weekly wins', ''], ['Won', '']], rows.filter(function (r) { return won[r.i]; }).sort(function (a, b) { return won[b.i] - won[a.i] || b.pts - a.pts; })
+      .map(function (r) { return [[r.team, 'l team'], [MGR26[r.team] || '', 'l'], [String(r.tops), ''], ['$' + won[r.i], '']]; }));
     sec(host, 'Week by week');
-    put(host, [['Week', ''], ['Winner', 'l'], ['Score', ''], ['Prize', '']], list.slice().reverse().map(function (x) {
-      return [[String(x.n), ''], [x.w.map(function (r) { return r.team; }).join(' and '), 'l team'], [f2(x.w[0].wk[x.n].pts), ''], ['$' + (PRIZE / x.w.length), '']];
+    put(host, [['Week', ''], ['Winner', 'l'], ['Score', ''], ['Prize', ''], ['Status', '']], list.slice().reverse().map(function (x) {
+      return [[String(x.n), ''], [x.w.map(function (r) { return r.team; }).join(' and '), 'l team'], [f2(x.w[0].wk[x.n].pts), ''], ['$' + (PRIZE / x.w.length), ''], [x.paid ? 'Paid' : 'Unpaid', x.paid ? 'pos' : 'neg']];
     }));
   }
 
