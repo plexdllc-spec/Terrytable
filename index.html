@@ -344,6 +344,9 @@
   .mu-r span:nth-child(2) { text-align: center; color: var(--muted); font-size: .85rem; }
   .mu-r span:last-child { text-align: right; }
   .prizeitem a.pn { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
+  .sharecv { width: 100%; max-width: 540px; height: auto; display: block; margin: 0 auto; }
+  .dot2l { stroke: rgba(201,169,178,.28); }
+  .selline { stroke: var(--gold); }
   .nteam { border: 1px solid var(--line); background: var(--panel); margin: 0 0 8px; }
   .nteam summary { cursor: pointer; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; list-style: none; border-left: 3px solid var(--gold); }
   .nteam summary::-webkit-details-marker { display: none; }
@@ -444,7 +447,12 @@
     <button role="tab" id="tab-stacks" aria-selected="false" data-tab="stacks">Stacks</button>
     <button role="tab" id="tab-news" aria-selected="false" data-tab="news">News</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
+    <button role="tab" id="tab-hof" aria-selected="false" data-tab="hof">Hall of Fame</button>
+    <button role="tab" id="tab-profiles" aria-selected="false" data-tab="profiles">Managers</button>
     <button role="tab" id="tab-seasons" aria-selected="false" data-tab="seasons">Seasons</button>
+    <button role="tab" id="tab-prizes" aria-selected="false" data-tab="prizes">Prizes</button>
+    <button role="tab" id="tab-recap" aria-selected="false" data-tab="recap">Recap</button>
+    <button role="tab" id="tab-share" aria-selected="false" data-tab="share">Share</button>
   </nav>
 
   <div id="sample" class="note" hidden>Example data. The league appears here once the first week is final.</div>
@@ -552,6 +560,12 @@
       <div id="x-alltime"></div>
     </section>
 
+    <section id="p-hof" hidden><div id="x-hof"></div></section>
+    <section id="p-profiles" hidden><div id="x-profiles"></div></section>
+    <section id="p-prizes" hidden><div id="x-prizes"></div></section>
+    <section id="p-recap" hidden><div id="x-recap"></div></section>
+    <section id="p-share" hidden><div id="x-share"></div></section>
+
     <section id="p-seasons" hidden>
       <div id="x-seasons"></div>
     </section>
@@ -577,7 +591,7 @@
 <script>
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons'];
+  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'scoring', 'trends', 'proj', 'pos', 'players', 'awards', 'stacks', 'news', 'alltime', 'seasons', 'hof', 'profiles', 'prizes', 'recap', 'share'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -1717,6 +1731,285 @@
       }));
   }
 
+
+  // ---- Phase 1 additions: Hall of Fame, Managers, Prizes, Recap, Share ----
+  var PRIZE = 50;
+  var MGR26 = { 'Tally SwampDonks': 'DanielM', 'RayGun Raptors': 'Weinjew', 'Joshua Strauch': 'Joshua', "I'll Kupp Your Balls": 'James', 'Jewban': 'Daniel',
+    'Dean Bernies XX': 'Corey', 'Shachar Spiegel Esq.': 'Shaq', 'Yordy': 'Jordan', 'Klitty Titty City Committee': 'Dave', 'Flois': 'nizzy', 'The Shredders': 'Marc', 'Rudyman': 'Aron' };
+  function histHost(id, tabName, fn) {
+    var host = $(id); host.textContent = '';
+    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === tabName) RENDER[tabName](); }); return null; }
+    if (!histYears().length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return null; }
+    return host;
+  }
+  function histRecs() {
+    var out = [];
+    histYears().forEach(function (y) { var rows = HIST[y], g = gamesIn(rows); rows.forEach(function (r) { out.push({ y: y, r: r, g: g, wp: r.w / g }); }); });
+    return out;
+  }
+  function listCell(arr) { return arr.length ? arr.join(', ') : ''; }
+
+  function renderHof() {
+    var host = histHost('x-hof', 'hof'); if (!host) return;
+    var years = histYears(), recs = histRecs(), M = {};
+    recs.forEach(function (x) {
+      if (x.r.mgr === '(hidden)') return;
+      var m = M[x.r.mgr] || (M[x.r.mgr] = { n: x.r.mgr, t1: [], fin: [], last: [], run: 0, best: 0, ys: {} });
+      m.ys[x.y] = x.r.r;
+      if (x.r.r === 1) m.t1.push(x.y); if (x.r.r <= 2) m.fin.push(x.y); if (x.r.r === 12) m.last.push(x.y);
+    });
+    Object.keys(M).forEach(function (k) {
+      var m = M[k], cur = 0, best = 0;
+      years.forEach(function (y) { if (m.ys[y] !== undefined && m.ys[y] <= 6) { cur++; best = Math.max(best, cur); } else cur = 0; });
+      m.best = best;
+    });
+    var list = Object.keys(M).map(function (k) { return M[k]; });
+    var cap = el('p', 'cap', 'Built from ' + years.length + ' seasons of final standings (' + years[0] + ' to ' + years[years.length - 1] + ').'); cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'Trophy case', true);
+    put(host, [['Manager', 'l'], ['Titles', ''], ['Years', 'l']], list.filter(function (m) { return m.t1.length; }).sort(function (a, b) { return b.t1.length - a.t1.length; })
+      .map(function (m) { return [[m.n, 'l team'], [String(m.t1.length), 'pos'], [listCell(m.t1), 'l']]; }));
+    sec(host, 'Finals trips (champion or runner-up)');
+    put(host, [['Manager', 'l'], ['Finals', ''], ['Years', 'l']], list.filter(function (m) { return m.fin.length; }).sort(function (a, b) { return b.fin.length - a.fin.length; })
+      .map(function (m) { return [[m.n, 'l team'], [String(m.fin.length), ''], [listCell(m.fin), 'l']]; }));
+    sec(host, 'Longest playoff streak (consecutive seasons)');
+    put(host, [['Manager', 'l'], ['Seasons', '']], list.slice().sort(function (a, b) { return b.best - a.best; }).slice(0, 6).map(function (m) { return [[m.n, 'l team'], [String(m.best), '']]; }));
+    var nc = recs.filter(function (x) { return x.r.r !== 1; });
+    sec(host, 'Best record without the title');
+    put(host, [['Year', ''], ['Team', 'l'], ['Manager', 'l'], ['Record', ''], ['Finish', '']], nc.sort(function (a, b) { return b.wp - a.wp || b.r.pf - a.r.pf; }).slice(0, 5)
+      .map(function (x) { return [[x.y, ''], [x.r.team, 'l team'], [x.r.mgr, 'l'], [x.r.w + '-' + x.r.l, ''], [String(x.r.r), '']]; }));
+    var ch = recs.filter(function (x) { return x.r.r === 1; });
+    sec(host, 'Luckiest champions (worst record)');
+    put(host, [['Year', ''], ['Team', 'l'], ['Manager', 'l'], ['Record', ''], ['PF / game', '']], ch.sort(function (a, b) { return a.wp - b.wp; }).slice(0, 4)
+      .map(function (x) { return [[x.y, ''], [x.r.team, 'l team'], [x.r.mgr, 'l'], [x.r.w + '-' + x.r.l, ''], [f1(x.r.pf / x.g), '']]; }));
+    sec(host, 'Wall of shame: last place finishes');
+    put(host, [['Manager', 'l'], ['Last places', ''], ['Years', 'l']], list.filter(function (m) { return m.last.length; }).sort(function (a, b) { return b.last.length - a.last.length; })
+      .map(function (m) { return [[m.n, 'l team'], [String(m.last.length), 'neg'], [listCell(m.last), 'l']]; }));
+    var worst = recs.slice().sort(function (a, b) { return a.wp - b.wp || a.r.pf - b.r.pf; }).slice(0, 5);
+    sec(host, 'Worst seasons by record');
+    put(host, [['Year', ''], ['Team', 'l'], ['Manager', 'l'], ['Record', ''], ['PF / game', '']], worst.map(function (x) { return [[x.y, ''], [x.r.team, 'l team'], [x.r.mgr, 'l'], [x.r.w + '-' + x.r.l, ''], [f1(x.r.pf / x.g), '']]; }));
+  }
+
+  function profChart(host, years, series, sel) {
+    var W = 480, H = 240, L = 30, R = 14, T = 14, B = 26, pw = W - L - R, ph = H - T - B, n = years.length;
+    var x = function (i) { return L + pw * (n > 1 ? i / (n - 1) : 0.5); }, y = function (r) { return T + ph * (r - 1) / 11; };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img' });
+    [1, 3, 6, 9, 12].forEach(function (r) {
+      svg.appendChild(sv('line', { x1: L, x2: W - R, y1: y(r), y2: y(r), 'class': 'grid' }));
+      svg.appendChild(sv('text', { x: L - 6, y: y(r) + 4, 'text-anchor': 'end', 'class': 'ax' }, String(r)));
+    });
+    svg.appendChild(sv('line', { x1: L, x2: W - R, y1: (y(6) + y(7)) / 2, y2: (y(6) + y(7)) / 2, 'class': 's-avg' }));
+    years.forEach(function (yr, i) { if (i % 2 === 0 || n < 8) svg.appendChild(sv('text', { x: x(i), y: H - 8, 'text-anchor': 'middle', 'class': 'ax' }, String(yr).slice(2))); });
+    function path(name, cls, w) {
+      var d = '', pts = [];
+      years.forEach(function (yr, i) { var r = series[name][yr]; if (r === undefined) return; pts.push([x(i), y(r)]); d += (d ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r).toFixed(1); });
+      if (d) svg.appendChild(sv('path', { d: d, fill: 'none', 'class': cls, 'stroke-width': w, 'stroke-linejoin': 'round' }));
+      return pts;
+    }
+    Object.keys(series).forEach(function (nm) { if (nm !== sel) path(nm, 'dot2l', 1); });
+    var pts = path(sel, 'selline', 2.6);
+    pts.forEach(function (p) { svg.appendChild(sv('circle', { cx: p[0], cy: p[1], r: 3.8, 'class': 'dot' })); });
+    host.appendChild(svg);
+  }
+
+  function renderProfiles() {
+    var host = histHost('x-profiles', 'profiles'); if (!host) return;
+    var years = histYears(), recs = histRecs(), by = {};
+    recs.forEach(function (x) { if (x.r.mgr === '(hidden)') return; (by[x.r.mgr] || (by[x.r.mgr] = [])).push(x); });
+    var names = Object.keys(by).sort(function (a, b) {
+      var ta = by[a].filter(function (x) { return x.r.r === 1; }).length, tb = by[b].filter(function (x) { return x.r.r === 1; }).length;
+      return (tb - ta) || (by[b].length - by[a].length);
+    });
+    if (!profSel || !by[profSel]) profSel = names[0];
+    var bar = el('div', 'pick'), lab = el('label', 'meta', 'Manager'), sel = el('select');
+    names.forEach(function (n) { var o = el('option', '', n); o.value = n; if (n === profSel) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', function () { profSel = sel.value; renderProfiles(); });
+    bar.appendChild(lab); bar.appendChild(sel); host.appendChild(bar);
+    var mine = by[profSel], t1 = mine.filter(function (x) { return x.r.r === 1; }), w = 0, l = 0, pf = 0, g = 0, fin = 0, best = 99;
+    mine.forEach(function (x) { w += x.r.w; l += x.r.l; pf += x.r.pf; g += x.g; fin += x.r.r; best = Math.min(best, x.r.r); });
+    var cap = el('p', 'cap', profSel + ': ' + mine.length + ' seasons, ' + t1.length + ' title' + (t1.length === 1 ? '' : 's') + (t1.length ? ' (' + t1.map(function (x) { return x.y; }).join(', ') + ')' : '') +
+      ', ' + w + '-' + l + ' regular season record (' + (100 * w / (w + l)).toFixed(1) + '%), ' + f1(pf / g) + ' points per game, average finish ' + f1(fin / mine.length) + ', best finish ' + best + '.');
+    host.appendChild(cap);
+    var series = {};
+    names.forEach(function (n) { series[n] = {}; by[n].forEach(function (x) { series[n][x.y] = x.r.r; }); });
+    sec(host, 'Finish by season');
+    var cb = el('div', 'chartbox'); profChart(cb, years, series, profSel);
+    var lg = el('div', 'legend'); lg.appendChild(el('span', '', 'Gold is ' + profSel + '. Gray lines are everyone else. Up is better. The dashed line is the playoff cutoff.')); cb.appendChild(lg); host.appendChild(cb);
+    sec(host, 'Season by season');
+    put(host, [['Year', ''], ['Team', 'l'], ['Finish', ''], ['Record', ''], ['PF / game', ''], ['PA / game', '']], mine.slice().reverse().map(function (x) {
+      return [[x.y, ''], [x.r.team, 'l team'], [x.r.r === 1 ? 'Champion' : String(x.r.r), x.r.r === 1 ? 'pos' : ''], [x.r.w + '-' + x.r.l, ''], [f1(x.r.pf / x.g), ''], [f1(x.r.pa / x.g), '']];
+    }));
+    var d = getData();
+    if (!d.sample && d.keys.length) {
+      var rows = analyze(d), cur = null;
+      rows.forEach(function (r) { if (MGR26[r.team] === profSel) cur = r; });
+      if (cur) {
+        sec(host, '2026 so far');
+        host.appendChild(el('p', 'cap', cur.team + ' is ranked ' + cur.rank + ' of 12 with ' + cur.lp + ' league points and averages ' + f1(cur.avg) + ' per game, against a career average of ' + f1(pf / g) + ' (' + signed(cur.avg - pf / g, f1) + ').'));
+      }
+    }
+  }
+  var profSel = null;
+
+  function renderPrizes() {
+    var host = $('x-prizes'); host.textContent = '';
+    var d = getData();
+    if (d.sample) { host.appendChild(el('p', 'cap', 'Prizes appear once real weeks are loaded.')); return; }
+    var rows = d.rows, tot = {}, list = [];
+    d.keys.forEach(function (n) {
+      var win = rows.filter(function (r) { return r.wk[n] && r.wk[n].top; });
+      win.forEach(function (r) { tot[r.i] = (tot[r.i] || 0) + PRIZE / win.length; });
+      list.push({ n: n, w: win });
+    });
+    var cap = el('p', 'cap', 'Highest score of the week wins $' + PRIZE + ' (split on an exact tie). Weeks counted: ' + d.keys.join(', ') + '. Weekly stats can still change until Yahoo finalizes them.'); cap.style.marginTop = '0'; host.appendChild(cap);
+    sec(host, 'Who is owed', true);
+    var owed = rows.filter(function (r) { return tot[r.i]; }).sort(function (a, b) { return tot[b.i] - tot[a.i] || b.pts - a.pts; });
+    var sum = 0; owed.forEach(function (r) { sum += tot[r.i]; });
+    put(host, [['Team', 'l'], ['Manager', 'l'], ['Weekly wins', ''], ['Owed', '']], owed.map(function (r) { return [[r.team, 'l team'], [MGR26[r.team] || '', 'l'], [String(r.tops), ''], ['$' + tot[r.i], 'pos']]; }));
+    host.appendChild(el('p', 'cap', 'Total prize money so far: $' + sum + '.'));
+    sec(host, 'Week by week');
+    put(host, [['Week', ''], ['Winner', 'l'], ['Score', ''], ['Prize', '']], list.slice().reverse().map(function (x) {
+      return [[String(x.n), ''], [x.w.map(function (r) { return r.team; }).join(' and '), 'l team'], [f2(x.w[0].wk[x.n].pts), ''], ['$' + (PRIZE / x.w.length), '']];
+    }));
+  }
+
+  function endp(t) { return /[.!?]$/.test(t) ? t : t + '.'; }
+  var recapWk = null;
+  function renderRecap() {
+    var host = $('x-recap'); host.textContent = '';
+    var d = getData();
+    if (d.sample) { host.appendChild(el('p', 'cap', 'The recap appears once real weeks are loaded.')); return; }
+    var keys = d.keys.slice().reverse();
+    if (!recapWk || d.keys.indexOf(recapWk) < 0) recapWk = keys[0];
+    var bar = el('div', 'pick'), lab = el('label', 'meta', 'Week'), sel = el('select');
+    keys.forEach(function (k) { var o = el('option', '', 'Week ' + k); o.value = k; if (k === recapWk) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', function () { recapWk = parseInt(sel.value, 10); renderRecap(); });
+    bar.appendChild(lab); bar.appendChild(sel); host.appendChild(bar);
+    var n = recapWk, rows = d.rows, ms = d.weeksObj[n], T = d.teams;
+    var gs = ms.map(function (m) { var a = num(m.as), b = num(m.bs); return { w: a >= b ? m.a : m.b, l: a >= b ? m.b : m.a, ws: Math.max(a, b), ls: Math.min(a, b) }; });
+    var sc = []; ms.forEach(function (m) { sc.push({ i: m.a, s: num(m.as) }); sc.push({ i: m.b, s: num(m.bs) }); });
+    sc.sort(function (a, b) { return b.s - a.s; });
+    var avg = mean(sc.map(function (x) { return x.s; }));
+    var close = gs.slice().sort(function (a, b) { return (a.ws - a.ls) - (b.ws - b.ls); })[0];
+    var blow = gs.slice().sort(function (a, b) { return (b.ws - b.ls) - (a.ws - a.ls); })[0];
+    var lucky = gs.slice().sort(function (a, b) { return a.ws - b.ws; })[0];
+    var unl = gs.slice().sort(function (a, b) { return b.ls - a.ls; })[0];
+    var prev = d.keys.indexOf(n) > 0 ? compute(d.teams, subset(d.weeksObj, d.keys.slice(0, d.keys.indexOf(n)))) : null, mv = null;
+    var after = compute(d.teams, subset(d.weeksObj, d.keys.slice(0, d.keys.indexOf(n) + 1)));
+    if (prev) {
+      var pm = {}; prev.forEach(function (r) { pm[r.i] = r.rank; });
+      after.forEach(function (r) { var c = pm[r.i] - r.rank; if (!mv || Math.abs(c) > Math.abs(mv.c)) mv = { r: r, c: c, from: pm[r.i] }; });
+    }
+    var items = [
+      ['Top scorer', T[sc[0].i] + ' with ' + f2(sc[0].s) + ' (' + signed(sc[0].s - avg, f1) + ' vs the league average of ' + f1(avg) + '). Wins the $' + PRIZE + ' prize.'],
+      ['Lowest score', T[sc[sc.length - 1].i] + ' with ' + f2(sc[sc.length - 1].s) + '.'],
+      ['Closest game', T[close.w] + ' ' + f2(close.ws) + ' over ' + T[close.l] + ' ' + f2(close.ls) + ', a margin of ' + f2(close.ws - close.ls) + '.'],
+      ['Biggest blowout', T[blow.w] + ' ' + f2(blow.ws) + ' over ' + T[blow.l] + ' ' + f2(blow.ls) + ', a margin of ' + f2(blow.ws - blow.ls) + '.'],
+      ['Luckiest win', T[lucky.w] + ' won with just ' + f2(lucky.ws) + ' against ' + endp(T[lucky.l])],
+      ['Unluckiest loss', T[unl.l] + ' scored ' + f2(unl.ls) + ' and still lost to ' + endp(T[unl.w])]
+    ];
+    if (mv && mv.c !== 0) items.push(['Biggest mover', mv.r.team + ' ' + (mv.c > 0 ? 'climbed ' : 'fell ') + Math.abs(mv.c) + ' spot' + (Math.abs(mv.c) === 1 ? '' : 's') + ', from ' + mv.from + ' to ' + mv.r.rank + '.']);
+    var top = after[0]; items.push(['Standings leader', top.team + ' with ' + top.lp + ' league points after Week ' + n + '.']);
+    sec(host, 'Week ' + n + ' recap', true);
+    items.forEach(function (it) {
+      var row = el('div', 'prizeitem'), pw = el('span', 'pw', it[0]); pw.style.minWidth = '8.2rem';
+      row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); host.appendChild(row);
+    });
+    sec(host, 'All games');
+    put(host, [['Winner', 'l'], ['Score', ''], ['Loser', 'l'], ['Score', ''], ['Margin', '']], gs.map(function (g) { return [[T[g.w], 'l team'], [f2(g.ws), ''], [T[g.l], 'l'], [f2(g.ls), ''], [f2(g.ws - g.ls), '']]; }));
+  }
+
+  var shareSel = null, shareLine = '', shareMode = 'roast';
+  function trashLines(r, rows, mode) {
+    var N = rows.length, t = r.team, out = [];
+    var byAvg = rows.slice().sort(function (a, b) { return b.avg - a.avg; }), avgRank = byAvg.indexOf(r) + 1;
+    var gp = Object.keys(r.wk).length;
+    if (mode === 'roast') {
+      if (r.rank >= N - 2) out.push(t + ' sits ' + r.rank + 'th with ' + r.lp + ' league points. At this pace the playoffs are a rumor.');
+      if (avgRank === N) out.push(t + ' averages ' + f1(r.avg) + ' points, the lowest in the league. The waiver wire is open all week.');
+      if (r.luck > 0.7) out.push(t + ' has ' + f1(r.luck) + ' more wins than the scoring says it should. The schedule is doing the heavy lifting.');
+      if (r.luck < -0.7) out.push(t + ' is ' + f1(-r.luck) + ' wins below expectation. Bad schedule or bad timing, pick one.');
+      out.push('Low point so far for ' + t + ': ' + f1(r.lo) + '. Some teams score that in a half.');
+      if (r.sd > 22) out.push(t + ' swings by ' + f1(r.sd) + ' points a week. Every Sunday is a surprise, mostly the bad kind.');
+      if (r.rank <= 3) out.push(t + ' is #' + r.rank + ' for now. Enjoy the view, it is a long way down.');
+      out.push(t + ' has beaten ' + Math.round(r.apPct * 100) + '% of the league on average each week. The other ' + Math.round((1 - r.apPct) * 100) + '% is on the record.');
+    } else {
+      if (r.rank <= 3) out.push(t + ' is #' + r.rank + ' with ' + r.lp + ' league points. Clear a spot for the trophy.');
+      if (r.tops > 0) out.push(t + ' owns ' + r.tops + ' weekly top score' + (r.tops === 1 ? '' : 's') + ', worth $' + (PRIZE * r.tops) + '.');
+      if (avgRank <= 3) out.push(t + ' averages ' + f1(r.avg) + ' points, #' + avgRank + ' in the league. The scoreboard does not lie.');
+      if (r.apPct >= 0.6) out.push(t + ' beats ' + Math.round(r.apPct * 100) + '% of the league every week. Elite.');
+      out.push('Best week for ' + t + ': ' + f1(r.hi) + '. That is the ceiling and it is high.');
+      if (r.rank > 6) out.push(t + ' is ' + r.rank + 'th now, and the playoff line is closer than it looks. Nobody is out yet.');
+      out.push(t + ' has ' + r.lp + ' league points from ' + gp + ' weeks. Every week is 3 more on the table.');
+    }
+    return out;
+  }
+  function wrapText(c, text, x, y, maxW, lh) {
+    var words = text.split(' '), line = '', yy = y;
+    words.forEach(function (w) {
+      var test = line ? line + ' ' + w : w;
+      if (c.measureText(test).width > maxW && line) { c.fillText(line, x, yy); line = w; yy += lh; } else line = test;
+    });
+    if (line) { c.fillText(line, x, yy); yy += lh; }
+    return yy;
+  }
+  function drawCard(cv, r, rows, line, nextTxt) {
+    var W = 1080, H = 1080, c = cv.getContext('2d');
+    cv.width = W; cv.height = H;
+    var g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#2a0a14'); g.addColorStop(1, '#12060a');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.strokeStyle = 'rgba(214,52,98,0.25)'; c.lineWidth = 2;
+    for (var k = 0; k < 14; k++) { c.beginPath(); c.moveTo(0, 640 + k * 40 + k * k * 1.4); c.lineTo(W, 640 + k * 40 + k * k * 1.4); c.stroke(); }
+    c.fillStyle = '#f2b632'; c.fillRect(60, 60, 12, 120);
+    c.font = 'italic 800 64px "Barlow Condensed", Impact, sans-serif'; c.fillText("Terry's Table", 92, 118);
+    c.font = '600 28px Barlow, Arial, sans-serif'; c.fillStyle = '#c9a9b2'; c.fillText('The DEAN Association  |  Week ' + (Object.keys(r.wk).length), 94, 166);
+    c.fillStyle = '#ffffff'; c.font = 'italic 800 96px "Barlow Condensed", Impact, sans-serif';
+    var y = wrapText(c, r.team, 60, 300, 960, 100);
+    c.font = '600 32px Barlow, Arial, sans-serif'; c.fillStyle = '#f2b632'; c.fillText((MGR26[r.team] || '') + '', 62, y - 40);
+    var stats = [['RANK', '#' + r.rank], ['LEAGUE PTS', String(r.lp)], ['RECORD', r.w + '-' + r.l], ['AVG PTS', f1(r.avg)]];
+    stats.forEach(function (st, i) {
+      var x = 60 + i * 245;
+      c.fillStyle = 'rgba(155,28,63,0.45)'; c.fillRect(x, y + 10, 225, 150);
+      c.fillStyle = '#f2b632'; c.font = 'italic 800 72px "Barlow Condensed", Impact, sans-serif'; c.fillText(st[1], x + 18, y + 95);
+      c.fillStyle = '#c9a9b2'; c.font = '600 22px Barlow, Arial, sans-serif'; c.fillText(st[0], x + 18, y + 135);
+    });
+    c.fillStyle = '#ffffff'; c.font = '600 40px Barlow, Arial, sans-serif';
+    var yy = wrapText(c, line, 60, y + 250, 960, 54);
+    if (nextTxt) { c.fillStyle = '#c9a9b2'; c.font = '600 28px Barlow, Arial, sans-serif'; c.fillText(nextTxt, 60, 1010); }
+    c.fillStyle = '#f2b632'; c.font = '600 24px Barlow, Arial, sans-serif'; c.textAlign = 'right'; c.fillText('terrys-table.onrender.com', 1020, 1040); c.textAlign = 'left';
+  }
+  function renderShare() {
+    var host = $('x-share'); host.textContent = '';
+    var d = getData();
+    if (d.sample) { host.appendChild(el('p', 'cap', 'Share cards appear once real weeks are loaded.')); return; }
+    var rows = analyze(d);
+    var bar = el('div', 'pick'), lab = el('label', 'meta', 'Team'), sel = el('select');
+    var ord = rows.slice().sort(function (a, b) { return a.team < b.team ? -1 : 1; });
+    if (shareSel === null || !rows.some(function (r) { return r.i === shareSel; })) shareSel = ord[0].i;
+    ord.forEach(function (r) { var o = el('option', '', r.team); o.value = r.i; if (r.i === shareSel) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', function () { shareSel = parseInt(sel.value, 10); shareLine = ''; renderShare(); });
+    bar.appendChild(lab); bar.appendChild(sel); host.appendChild(bar);
+    var r = rows.filter(function (q) { return q.i === shareSel; })[0];
+    var btns = el('div', 'pick'); btns.style.marginTop = '10px';
+    function mk(txt, fn) { var b = el('button', 'btn', txt); b.addEventListener('click', fn); btns.appendChild(b); return b; }
+    mk('Roast', function () { shareMode = 'roast'; shareLine = ''; renderShare(); });
+    mk('Hype', function () { shareMode = 'hype'; shareLine = ''; renderShare(); });
+    mk('New line', function () { shareLine = ''; renderShare(); });
+    var lines = trashLines(r, rows, shareMode);
+    if (!shareLine || lines.indexOf(shareLine) < 0) shareLine = lines[Math.floor(Math.random() * lines.length)];
+    var nextTxt = '';
+    if (UP && UP.matchups) UP.matchups.forEach(function (m) {
+      var tn = d.teams;
+      if (m.a === r.i) nextTxt = 'Week ' + UP.week + ': vs ' + tn[m.b]; else if (m.b === r.i) nextTxt = 'Week ' + UP.week + ': vs ' + tn[m.a];
+    });
+    var cv = el('canvas', 'sharecv'); drawCard(cv, r, rows, shareLine, nextTxt);
+    var dl = mk('Download image', function () {
+      cv.toBlob(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = r.team.replace(/[^a-z0-9]+/gi, '-') + '.png'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000); });
+    });
+    host.appendChild(btns);
+    host.appendChild(el('p', 'cap', 'Lines are built from real standings and scoring. Roast and Hype swap the tone. New line picks another.'));
+    var wrap = el('div', 'chartbox'); wrap.appendChild(cv); host.appendChild(wrap);
+  }
+
   // ---- News: injuries and headlines for Week 5 starters ----
   var NEWS = null, NEWSAT = 0;
   function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim(); }
@@ -2056,15 +2349,15 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck, scoring: renderScoring, trends: renderTrends,
-    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons };
+    proj: renderProj, pos: renderPos, players: renderPlayers, awards: renderAwards, stacks: renderStacks, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, hof: renderHof, profiles: renderProfiles, prizes: renderPrizes, recap: renderRecap, share: renderShare };
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'playoffs', 'odds']],
-    ['week', ['outlook', 'matchups', 'proj', 'news']],
+    ['standings', ['table', 'playoffs', 'odds', 'prizes']],
+    ['week', ['outlook', 'matchups', 'recap', 'proj', 'news']],
     ['teams', ['power', 'analytics', 'trends', 'scoring']],
     ['players', ['players', 'pos', 'stacks']],
-    ['fun', ['luck', 'awards']],
-    ['history', ['alltime', 'seasons']]
+    ['fun', ['luck', 'awards', 'share']],
+    ['history', ['alltime', 'hof', 'profiles', 'seasons']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {
