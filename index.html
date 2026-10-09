@@ -423,6 +423,41 @@
   details.csec > .cbody { padding: 6px 14px 14px; }
   details.csec > .cbody > .chartbox:first-child, details.csec > .cbody > .scroll:first-child { margin-top: 4px; }
   @media (max-width: 700px) { details.csec > .cbody { padding: 4px 0 12px; } details.csec > .cbody > .cap, details.csec > .cbody > p { padding: 0 2px; } }
+
+  /* Sportsbook board */
+  .bk { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .bk:first-of-type { border-top: 0; }
+  .bk .tn { font: 700 1.15rem var(--f-disp); line-height: 1.1; cursor: pointer; overflow-wrap: anywhere; }
+  .bk .tn::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 8px; background: var(--gold); transform: skewX(-20deg); }
+  .bk.b .tn::before { background: var(--garnet-hi); }
+  .bk .tn small { display: block; color: var(--muted); font: 500 .75rem var(--f-body); margin-left: 17px; }
+  .chipn { min-width: 4.6rem; padding: 7px 8px; text-align: center; font: 800 1.1rem var(--f-disp); font-variant-numeric: tabular-nums; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); transition: transform .15s, box-shadow .2s; }
+  .chipn small { display: block; color: var(--muted); font: 500 .6rem var(--f-body); letter-spacing: .1em; text-transform: uppercase; }
+  .chipn.fav { border-color: var(--gold); color: var(--gold); background: rgba(242, 182, 50, .08); box-shadow: 0 0 14px rgba(242, 182, 50, .18); }
+  .chipn.dog { border-color: var(--garnet-hi); color: #ff8aa8; background: rgba(214, 40, 90, .08); }
+  .mu:hover .chipn { transform: translateY(-1px); }
+  .mu .fc { display: flex; justify-content: space-between; color: var(--muted); font: 600 .85rem var(--f-body); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  /* Bar lists */
+  .bl { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .bl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .bl-tabs button { font: 700 .8rem var(--f-disp); letter-spacing: .08em; text-transform: uppercase; padding: 5px 11px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; border-radius: 14px; }
+  .bl-tabs button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+  .blr { display: grid; grid-template-columns: minmax(0, 8.6rem) minmax(0, 1fr) 3.4rem; gap: 10px; align-items: center; min-height: 30px; }
+  .blr .nm { font: 700 1rem var(--f-disp); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .blr .nm small { color: var(--muted); font: 500 .72rem var(--f-body); margin-left: 6px; }
+  .blr .tr { position: relative; height: 14px; background: rgba(255, 255, 255, .05); }
+  .blr .tr i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, var(--garnet-hi), var(--gold)); box-shadow: 0 0 12px rgba(242, 182, 50, .35); transition: width .8s var(--ease); }
+  .blr .tr i.b2 { top: auto; height: 5px; background: var(--gold-soft); box-shadow: none; opacity: .9; }
+  .blr .tr i.neg { background: linear-gradient(270deg, #ff4b6a, #8a1430); box-shadow: 0 0 12px rgba(255, 75, 106, .3); }
+  .blr .tr .zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .6; }
+  .blr .tr.div i { left: 50%; }
+  .blr .tr.div i.neg { left: auto; right: 50%; }
+  .blr .v { font: 800 1.05rem var(--f-disp); font-variant-numeric: tabular-nums; text-align: right; }
+  .blr .v.pos { color: var(--pos); } .blr .v.neg { color: var(--neg); }
+  .blr:hover .nm { color: var(--gold); }
+  .bl-key { display: flex; gap: 14px; color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
+  .bl-key b { display: inline-block; width: 18px; height: 5px; background: var(--gold-soft); margin-right: 6px; vertical-align: middle; }
+  @media (max-width: 560px) { .blr { grid-template-columns: minmax(0, 9.4rem) minmax(0, 1fr) 2.9rem; gap: 8px; } .blr .nm small { display: none; } }
   .nteam { border: 1px solid var(--line); background: var(--panel); margin: 0 0 8px; }
   .nteam summary { cursor: pointer; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; list-style: none; border-left: 3px solid var(--gold); }
   .nteam summary::-webkit-details-marker { display: none; }
@@ -924,8 +959,8 @@
     var kk = d.keys.length, rows = pbaseRows(kk, d);
     if (!rows) return;
     sec(host, 'Playoff odds from history, after Week ' + kk, true);
-    put(host, [['Team', 'l'], ['LP', ''], ['Made playoffs', '']],
-      rows.map(function (r) { return [[shortName(r.team, 15), 'l team'], [String(r.lp), ''], [r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '')]]; }));
+    barList(host, rows.map(function (r) { return { t: r.team, sub: r.lp + ' LP', v: r.po === null ? 0 : r.po * 100, txt: r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', cls: r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '') }; }),
+      { max: 100, sorts: [['By LP', function (x, y) { return parseInt(y.sub, 10) - parseInt(x.sub, 10) || y.v - x.v; }], ['By odds', function (x, y) { return y.v - x.v; }]] });
   }
   function renderTable(upTo) {
     var d = getData(upTo), rows = d.rows, keys = d.keys;
@@ -1239,6 +1274,50 @@
 
   // ---- Lineup analytics (starters only, from /api/lineups) ----
   var LU = null, luSig = '';
+
+  // Animated bar list. rows: {t, v, txt, sub, v2, cls}. opts: {max, div, sorts:[[label, fn(a,b)]], key2}
+  function barList(host, rows, opts) {
+    opts = opts || {};
+    var wrap = el('div'), list = el('div', 'bl'), cur = 0;
+    var mx = opts.max || Math.max.apply(null, rows.map(function (r) { return Math.abs(r.v); }).concat([0.0001]));
+    function draw() {
+      list.textContent = '';
+      var arr = rows.slice();
+      if (opts.sorts && opts.sorts[cur]) arr.sort(opts.sorts[cur][1]);
+      var made = [];
+      arr.forEach(function (r, k) {
+        var row = el('div', 'blr'), nm = el('div', 'nm tl', r.t);
+        if (r.sub) nm.appendChild(el('small', '', r.sub));
+        var tr = el('div', 'tr' + (opts.div ? ' div' : '')), f = el('i', r.v < 0 ? 'neg' : '');
+        tr.appendChild(f);
+        if (opts.div) tr.appendChild(el('span', 'zero'));
+        var f2n = null;
+        if (r.v2 !== undefined && r.v2 !== null) { f2n = el('i', 'b2'); tr.appendChild(f2n); }
+        var v = el('div', 'v' + (r.cls ? ' ' + r.cls : ''), r.txt);
+        row.appendChild(nm); row.appendChild(tr); row.appendChild(v); list.appendChild(row);
+        made.push([f, f2n, r, k]);
+      });
+      function go() {
+        made.forEach(function (m) {
+          var f = m[0], r = m[2], w = opts.div ? Math.abs(r.v) / mx * 50 : Math.max(0, r.v) / mx * 100;
+          f.style.transitionDelay = (m[3] * 35) + 'ms'; f.style.width = Math.min(100, w).toFixed(1) + '%';
+          if (m[1]) { m[1].style.transitionDelay = (m[3] * 35) + 'ms'; m[1].style.width = Math.min(100, Math.max(0, r.v2) / mx * 100).toFixed(1) + '%'; }
+        });
+      }
+      if (ANIM) onView(list, go); else go();
+    }
+    if (opts.sorts && opts.sorts.length > 1) {
+      var tabs = el('div', 'bl-tabs');
+      opts.sorts.forEach(function (sx, k) {
+        var b = el('button', '', sx[0]); b.type = 'button'; b.setAttribute('aria-pressed', String(k === 0));
+        b.addEventListener('click', function () { cur = k; Array.prototype.forEach.call(tabs.children, function (c, j) { c.setAttribute('aria-pressed', String(j === k)); }); draw(); });
+        tabs.appendChild(b);
+      });
+      wrap.appendChild(tabs);
+    }
+    if (opts.key2) { var kd = el('div', 'bl-key'); var kk = el('span'); kk.appendChild(el('b')); kk.appendChild(document.createTextNode(opts.key2)); kd.appendChild(kk); wrap.appendChild(kd); }
+    wrap.appendChild(list); host.appendChild(wrap); draw();
+  }
   function put(host, heads, rows) {
     var w = el('div', 'scroll'), t = el('table');
     fill(t, heads, rows); w.appendChild(t); host.appendChild(w);
@@ -1602,16 +1681,18 @@
     up.matchups.forEach(function (m) {
       var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / sm);
       var elp = function (i, p) { return 2 * p + phi((o.f5[i] - fbar) / (sg * Math.sqrt((T - 1) / T))); };
-      var c = el('div', 'mu'), h = el('div', 'mu-h');
-      h.appendChild(el('span', 'l', d.teams[a])); h.appendChild(el('span', 'v', 'vs')); h.appendChild(el('span', 'r', d.teams[b]));
-      c.appendChild(h);
-      var bar = el('div', 'wp'), seg = el('i'); seg.style.width = (pa * 100).toFixed(1) + '%'; bar.appendChild(seg); c.appendChild(bar);
-      var row = function (lbl, l, r) { var e = el('div', 'mu-r'); e.appendChild(el('span', '', l)); e.appendChild(el('span', '', lbl)); e.appendChild(el('span', '', r)); c.appendChild(e); };
-      var sp = Math.round(Math.abs(fa - fb) * 2) / 2, spA = sp === 0 ? 'PK' : (fa >= fb ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (fb > fa ? '-' : '+') + sp.toFixed(1);
-      row('Spread', spA + ' (-110)', spB + ' (-110)');
-      row('Money line', ml(pa), ml(1 - pa));
-      row('Forecast', f1(fa), f1(fb));
-      row('Exp league pts', f1(elp(a, pa)), f1(elp(b, 1 - pa)));
+      var c = el('div', 'mu');
+      var sp = Math.round(Math.abs(fa - fb) * 2) / 2, favA = fa >= fb;
+      var spA = sp === 0 ? 'PK' : (favA ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (favA ? '+' : '-') + sp.toFixed(1);
+      [[a, spA, ml(pa), favA, 'Exp ' + f1(elp(a, pa)) + ' LP'], [b, spB, ml(1 - pa), !favA, 'Exp ' + f1(elp(b, 1 - pa)) + ' LP']].forEach(function (z, k) {
+        var r = el('div', 'bk' + (k ? ' b' : '')), nm = el('div', 'tn tl', d.teams[z[0]]);
+        nm.appendChild(el('small', '', f1(o.f5[z[0]]) + ' proj'));
+        var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), z[1]); c1.appendChild(el('small', '', 'Spread'));
+        var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), z[2]); c2.appendChild(el('small', '', 'Money'));
+        r.appendChild(nm); r.appendChild(c1); r.appendChild(c2); c.appendChild(r);
+      });
+      var bar = el('div', 'wp'), seg = el('i'); seg.style.width = '0%'; bar.appendChild(seg); c.appendChild(bar);
+      if (ANIM) onView(bar, function () { seg.style.transition = 'width .9s cubic-bezier(.2,.8,.2,1)'; seg.style.width = (pa * 100).toFixed(1) + '%'; }); else seg.style.width = (pa * 100).toFixed(1) + '%';
       [a, b].forEach(function (i) {
         if (o.fill[i] && o.fill[i].holes) c.appendChild(el('div', 'mu-n', d.teams[i] + ': ' + o.fill[i].holes + ' empty slot' + (o.fill[i].holes > 1 ? 's' : '') + ' filled at ' + REPL));
       });
@@ -1666,12 +1747,8 @@
     var c6 = s.cut6.slice().sort(function (a, b) { return a - b; }), c2 = s.cut2.slice().sort(function (a, b) { return a - b; });
     var m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
     sec(host, 'Playoff and bye odds', true);
-    put(host, [['#', 'c1'], ['Team', 'l c2'], ['Now', ''], ['LP', ''], ['Median Final LP', ''], ['Playoffs', ''], ['Bye', ''], ['Schedule', '']],
-      info.map(function (r, k) {
-        return [[String(k + 1), 'c1'], [r.team, 'l c2 team'], [String(r.rank), ''], [String(r.now), ''], [String(r.med), ''],
-          [pctText(r.po), r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : '')], [pctText(r.bye), r.bye >= 0.5 ? 'pos' : ''],
-          [r.sos === null ? '' : signed(r.sos, f1), r.sos === null ? '' : (r.sos > 1 ? 'neg' : (r.sos < -1 ? 'pos' : ''))]];
-      }));
+    barList(host, info.map(function (r) { return { t: r.team, sub: '#' + r.rank + ' · ' + r.now + ' LP · ends ' + r.med, v: r.po * 100, v2: r.bye * 100, txt: pctText(r.po), cls: r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : ''), med: r.med, rank: r.rank, sos: r.sos }; }),
+      { max: 100, key2: 'Bye odds', sorts: [['Playoffs', function (x, y) { return y.v - x.v || y.med - x.med; }], ['Bye', function (x, y) { return y.v2 - x.v2 || y.v - x.v; }], ['Rank now', function (x, y) { return x.rank - y.rank; }], ['Easy schedule', function (x, y) { return (x.sos === null ? 9 : x.sos) - (y.sos === null ? 9 : y.sos); }]] });
     host.appendChild(el('p', 'cap', 'Schedule is the average strength of remaining opponents against the league average, in projected points. Plus means a tougher road, minus means an easier one.'));
     sec(host, 'Path to the playoffs');
     var left = WEEKS - s.start + 1, safe6 = pctile(c6, 0.9);
@@ -2812,15 +2889,12 @@
 
     sec(host, 'League points since ' + ys[0], true);
     var list = Object.keys(M).map(function (k) { return M[k]; }).sort(function (a, b) { return (b.lp / b.g) - (a.lp / a.g); });
-    put(host, [['Manager', 'l'], ['LP', ''], ['LP per season', ''], ['Wins', ''], ['Avg pts', ''], ['Top weeks', '']],
-      list.map(function (m) {
-        var sn = Object.keys(m.ys).length;
-        return [[m.n, 'l team'], [String(m.lp), 'pos'], [(m.lp / sn).toFixed(1), ''], [m.w + '-' + (m.g - m.w), ''], [(m.pts / m.g).toFixed(1), ''], [String(m.tops), '']];
-      }));
+    barList(host, list.map(function (m) { var sn = Object.keys(m.ys).length; return { t: m.n, sub: m.w + '-' + (m.g - m.w), v: m.lp / sn, txt: (m.lp / sn).toFixed(1), tot: m.lp, avg: m.pts / m.g }; }),
+      { sorts: [['LP / season', function (x, y) { return y.v - x.v; }], ['Total LP', function (x, y) { return y.tot - x.tot; }], ['Avg pts', function (x, y) { return y.avg - x.avg; }]] });
 
     sec(host, 'Weekly high score wins');
     var tops = list.slice().sort(function (a, b) { return b.tops - a.tops; });
-    put(host, [['Manager', 'l'], ['Weeks', ''], ['At $50', '']], tops.filter(function (m) { return m.tops; }).map(function (m) { return [[m.n, 'l team'], [String(m.tops), 'pos'], ['$' + m.tops * 50, '']]; }));
+    barList(host, tops.filter(function (m) { return m.tops; }).map(function (m) { return { t: m.n, sub: '$' + m.tops * 50, v: m.tops, txt: String(m.tops) }; }), {});
 
     sec(host, 'Highest single weeks');
     function gl(arr) { return arr.slice(0, 10).map(function (g, k) { return [[String(k + 1), 'rk'], [g.m, 'l team'], [g.y + ' Wk ' + g.wk, 'l'], [g.v.toFixed(2), 'pos']]; }); }
@@ -2867,8 +2941,7 @@
     });
     var lk = Object.keys(LK).map(function (k) { var o = LK[k], mu = mean(o.ps), sd = Math.sqrt(mean(o.ps.map(function (v) { return (v - mu) * (v - mu); }))); o.mu = mu; o.sd = sd; o.lo = Math.min.apply(null, o.ps); o.hi = Math.max.apply(null, o.ps); o.luck = o.w - o.ex; return o; });
     sec(host, 'Luck since ' + ys[0]);
-    put(host, [['Manager', 'l'], ['Wins', ''], ['Expected', ''], ['Luck', '']],
-      lk.slice().sort(function (a, b) { return b.luck - a.luck; }).map(function (o) { return [[o.n, 'l team'], [String(o.w), ''], [o.ex.toFixed(1), ''], [signed(o.luck, f1), o.luck >= 0 ? 'pos' : 'neg']]; }));
+    barList(host, lk.slice().sort(function (a, b) { return b.luck - a.luck; }).map(function (o) { return { t: o.n, sub: o.w + ' W, exp ' + o.ex.toFixed(1), v: o.luck, txt: signed(o.luck, f1), cls: o.luck >= 0 ? 'pos' : 'neg' }; }), { div: true, max: Math.max.apply(null, lk.map(function (o) { return Math.abs(o.luck); })) });
     sec(host, 'Consistency since ' + ys[0]);
     put(host, [['Manager', 'l'], ['Avg', ''], ['Spread', ''], ['Low', ''], ['High', '']],
       lk.slice().sort(function (a, b) { return a.sd - b.sd; }).map(function (o) { return [[o.n, 'l team'], [o.mu.toFixed(1), ''], [o.sd.toFixed(1), ''], [o.lo.toFixed(1), ''], [o.hi.toFixed(1), '']]; }));
