@@ -1586,7 +1586,7 @@
       if (p.proj < 1) holes++;
       s += v; left += v;
     });
-    return { proj: s, holes: holes, rem: s > 0 ? Math.min(1, Math.max(0.04, left / s)) : 1 };
+    return { proj: s, holes: holes, rem: s > 0 ? (left > 0 ? Math.min(1, Math.max(0.04, left / s)) : 0) : 1 };
   }
 
   function backtest(H) {
@@ -1685,7 +1685,7 @@
     }
     var box = el('div', 'mugrid');
     up.matchups.forEach(function (m) {
-      var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], pa = phi((fa - fb) / (sg * Math.sqrt(o.fill[a].rem + o.fill[b].rem)));
+      var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], dn = o.fill[a].rem + o.fill[b].rem === 0, pa = dn ? (fa > fb ? 1 : (fa < fb ? 0 : 0.5)) : phi((fa - fb) / (sg * Math.sqrt(o.fill[a].rem + o.fill[b].rem)));
       var elp = function (i, p) { return 2 * p + phi((o.f5[i] - fbar) / (sg * Math.sqrt((T - 1) / T))); };
       var c = el('div', 'mu');
       var sp = Math.round(Math.abs(fa - fb) * 2) / 2, favA = fa >= fb;
@@ -1693,8 +1693,8 @@
       [[a, spA, ml(pa), favA, 'Exp ' + f1(elp(a, pa)) + ' LP'], [b, spB, ml(1 - pa), !favA, 'Exp ' + f1(elp(b, 1 - pa)) + ' LP']].forEach(function (z, k) {
         var r = el('div', 'bk' + (k ? ' b' : '')), nm = el('div', 'tn tl', d.teams[z[0]]);
         nm.appendChild(el('small', '', f1(o.f5[z[0]]) + ' proj'));
-        var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), z[1]); c1.appendChild(el('small', '', 'Spread'));
-        var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), z[2]); c2.appendChild(el('small', '', 'Money'));
+        var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? (z[3] ? 'WIN' : 'LOSS') : z[1]); c1.appendChild(el('small', '', dn ? 'Final' : 'Spread'));
+        var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? f1(o.f5[z[0]]) : z[2]); c2.appendChild(el('small', '', dn ? 'Points' : 'Money'));
         r.appendChild(nm); r.appendChild(c1); r.appendChild(c2); c.appendChild(r);
       });
       var bar = el('div', 'wp'), seg = el('i'); seg.style.width = '0%'; bar.appendChild(seg); c.appendChild(bar);
@@ -3082,7 +3082,7 @@
     var opp = -1, m0 = null;
     if (o && o.up) o.up.matchups.forEach(function (m) { if (m.a === i) { opp = m.b; m0 = m; } else if (m.b === i) { opp = m.a; m0 = m; } });
     if (o && opp >= 0) {
-      var sm = o.fm.sigma * Math.sqrt(o.fill[i].rem + o.fill[opp].rem), fa = o.f5[i], fb = o.f5[opp], pa = phi((fa - fb) / sm), mg2 = Math.round(Math.abs(fa - fb) * 2) / 2;
+      var sm = Math.max(0.01, o.fm.sigma * Math.sqrt(o.fill[i].rem + o.fill[opp].rem)), fa = o.f5[i], fb = o.f5[opp], pa = phi((fa - fb) / sm), mg2 = Math.round(Math.abs(fa - fb) * 2) / 2;
       b.appendChild(el('div', 'sh-t', 'Week ' + o.up.week + ' vs ' + d.teams[opp]));
       var ob = el('div', 'oddsb'), s1 = el('div', 'obtn' + (pa >= 0.5 ? '' : ' dog'), (mg2 === 0 ? 'PK' : (fa >= fb ? '-' : '+') + mg2.toFixed(1))); s1.appendChild(el('small', '', 'Spread'));
       var s2 = el('div', 'obtn' + (pa >= 0.5 ? '' : ' dog'), mlOdds(pa)); s2.appendChild(el('small', '', 'Money line'));
