@@ -373,7 +373,7 @@
 
   // ---- Playoff picture ----
   function plate(r, cls, d, i, line1, line2) {
-    var p = el('div', 'plate ' + cls);
+    var p = el('div', 'plate ' + cls); p.setAttribute('data-ti', String(r.i));
     p.style.setProperty('--d', (i * 0.06) + 's');
     p.appendChild(el('div', 'sd', String(r.rank)));
     var mid = el('div');
@@ -467,8 +467,7 @@
       }));
   }
 
-  // ---- Scoring ----
-  // ---- Trends (SVG charts) ----
+  // ---- SVG helpers ----
   var NS = 'http://www.w3.org/2000/svg';
   function sv(tag, attrs, text) {
     var e = document.createElementNS(NS, tag);
@@ -498,6 +497,7 @@
       var made = [];
       arr.forEach(function (r, k) {
         var row = el('div', 'blr'), nm = el('div', 'nm tl', r.t);
+        if (r.ti !== undefined) row.setAttribute('data-ti', String(r.ti));
         if (r.sub) nm.appendChild(el('small', '', r.sub));
         var tr = el('div', 'tr' + (opts.div ? ' div' : '')), f = el('i', r.v < 0 ? 'neg' : '');
         tr.appendChild(f);
@@ -656,7 +656,7 @@
     var H = { ks: x.keys, act: {}, proj: {} };
     x.d.rows.forEach(function (r) {
       H.act[r.i] = x.keys.map(function (n) { return r.wk[n].pts; });
-      H.proj[r.i] = x.keys.map(function (n) { return projOf(n, r.i); });
+      H.proj[r.i] = x.keys.map(function (n) { var s = 0; LU[n][r.i].forEach(function (q) { s += q.proj >= 1 ? q.proj : REPL; }); return s; });
     });
     return H;
   }
@@ -709,11 +709,13 @@
     var N = o.simN || 5000, ids = o.ids, T = ids.length, sigma = o.fm.sigma, r = mulberry32(20261006);
     var start = Math.max.apply(null, x.d.keys) + 1, cur = {}, sched = fullSched();
     x.d.rows.forEach(function (q) { cur[q.i] = { lp: q.lp, pts: q.pts }; });
-    var res = { N: N, start: start, pos: {}, lp: {}, cut6: [], cut2: [] };
+    var res = { N: N, start: start, pos: {}, lp: {}, cut6: [], cut2: [], g1: {}, inP: {} };
+    ids.forEach(function (i) { res.g1[i] = new Int8Array(N); res.inP[i] = new Uint8Array(N); });
     ids.forEach(function (i) { res.pos[i] = []; for (var k = 0; k < T; k++) res.pos[i].push(0); res.lp[i] = []; });
     for (var s = 0; s < N; s++) {
       var lp = {}, pts = {};
-      ids.forEach(function (i) { lp[i] = cur[i].lp; pts[i] = cur[i].pts; });
+      var base = {};
+      ids.forEach(function (i) { lp[i] = cur[i].lp; pts[i] = cur[i].pts; base[i] = lp[i]; });
       for (var w = start; w <= WEEKS; w++) {
         var sc = {}, tot = 0;
         ids.forEach(function (i) {
@@ -731,9 +733,10 @@
           if (sc[p[0]] > sc[p[1]]) lp[p[0]] += 2; else if (sc[p[1]] > sc[p[0]]) lp[p[1]] += 2;
         });
         ids.forEach(function (i) { if (sc[i] > avg) lp[i] += 1; pts[i] += sc[i]; });
+        if (w === start) ids.forEach(function (i) { res.g1[i][s] = lp[i] - base[i]; });
       }
       var order = ids.slice().sort(function (a, b) { return (lp[b] - lp[a]) || (pts[b] - pts[a]); });
-      order.forEach(function (i, k) { res.pos[i][k]++; res.lp[i].push(lp[i]); });
+      order.forEach(function (i, k) { res.pos[i][k]++; res.lp[i].push(lp[i]); if (k < 6) res.inP[i][s] = 1; });
       res.cut6.push(lp[order[5]]); res.cut2.push(lp[order[1]]);
     }
     return res;
@@ -862,6 +865,98 @@
     host.appendChild(svg);
   }
 
+
+  // ---- Road to the playoffs: plain-language explainer for one team (hover card and team sheet) ----
+  function roadOf(i) {
+    var x = luX(); if (!x) return null;
+    var o; try { o = getOutlook(x); } catch (e) { return null; }
+    if (!o || !o.sim || !o.sim.pos[i]) return null;
+    var d = x.d, s = o.sim, cur = null, byRank = d.rows.slice(), up = o.up, kk = s.start - 1;
+    d.rows.forEach(function (q) { if (q.i === i) cur = q; });
+    if (!cur) return null;
+    var asc = function (a, b) { return a - b; };
+    var left = WEEKS - s.start + 1, pr = 0, by = 0, N = s.N;
+    s.pos[i].forEach(function (c, k) { if (k < 6) pr += c; if (k < 2) by += c; });
+    var po = pr / N, bye = by / N, lps = s.lp[i].slice().sort(asc), med = pctile(lps, 0.5);
+    var c6 = s.cut6.slice().sort(asc), c2 = s.cut2.slice().sort(asc), m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
+    var mx = cur.lp + 3 * left, above = 0, reach = 0;
+    d.rows.forEach(function (q) { if (q.i === i) return; if (q.lp > mx) above++; if (q.lp + 3 * left >= cur.lp) reach++; });
+    var status, cls;
+    if (above >= 6) { status = 'Eliminated'; cls = 'neg'; }
+    else if (reach <= 5) { status = 'Clinched'; cls = 'pos'; }
+    else if (po >= 0.8) { status = 'Favored'; cls = 'pos'; }
+    else if (po >= 0.2) { status = 'Bubble'; cls = ''; }
+    else { status = 'Long shot'; cls = 'neg'; }
+    var need = Math.max(0, m6 - cur.lp), pace = left ? need / left : 0, own = left ? Math.max(0, med - cur.lp) / left : 0;
+    var r6 = d.rows[5], r7 = d.rows[6], pfRank = 1;
+    d.rows.forEach(function (q) { if (q.pts > cur.pts) pfRank++; });
+    var L = [], where;
+    if (cur.rank <= 6) where = '#' + cur.rank + ' with ' + cur.lp + ' LP, ' + (cur.lp - r7.lp) + ' clear of 7th (' + r7.team + ', ' + r7.lp + ').';
+    else where = '#' + cur.rank + ' with ' + cur.lp + ' LP, ' + (r6.lp - cur.lp) + ' behind 6th (' + r6.team + ', ' + r6.lp + ').';
+    var tie = Math.abs(cur.lp - (cur.rank <= 6 ? r7.lp : r6.lp)) <= 1 ? ' Ties on LP go to total points: ' + f1(cur.pts) + ', ' + ordn(pfRank) + ' in the league.' : '';
+    L.push(['Where', where + tie]);
+    var road;
+    if (status === 'Eliminated') road = 'Even 3 LP every week (max ' + mx + ') cannot pass the six teams ahead.';
+    else if (status === 'Clinched') road = 'No team outside the top six can catch them. ' + (bye >= 0.995 ? 'The bye is also locked.' : 'Bye odds are ' + Math.round(bye * 100) + '%; the bye line is usually near ' + m2 + ' LP.');
+    else if (status === 'Favored') road = 'Usually the cutoff is about ' + m6 + ' LP, so ' + need + ' more over ' + left + ' weeks (' + f1(pace) + ' a week). They are on pace for ' + f1(own) + ' a week. They miss only if they fall well short of that.' + (bye >= 0.1 ? ' Bye odds ' + Math.round(bye * 100) + '% (line near ' + m2 + ' LP).' : '');
+    else road = 'Usually the cutoff is about ' + m6 + ' LP (' + pctile(c6, 0.1) + ' to ' + pctile(c6, 0.9) + ' in most simulations). They need ' + need + ' more in ' + left + ' weeks, ' + f1(pace) + ' a week, and are on pace for ' + f1(own) + '. A win is 2 LP and beating the league average adds 1, so about ' + Math.ceil(need / 3) + ' of ' + left + ' weeks need to be both.';
+    L.push(['Road', road]);
+    var opp = -1, mt = null;
+    if (up) up.matchups.forEach(function (m) { if (m.a === i) { opp = m.b; mt = m; } else if (m.b === i) { opp = m.a; mt = m; } });
+    if (opp >= 0 && o.fill[i] && o.fill[i].rem + o.fill[opp].rem > 0 && status !== 'Eliminated' && status !== 'Clinched') {
+      var wn = 0, wi = 0, ln = 0, li = 0, g = s.g1[i], ip = s.inP[i], q;
+      for (q = 0; q < N; q++) { if (g[q] >= 2) { wn++; wi += ip[q]; } else { ln++; li += ip[q]; } }
+      if (wn > 40 && ln > 40) L.push(['Week ' + up.week, 'Vs ' + d.teams[opp] + ': a win moves playoff odds to ' + Math.round(wi / wn * 100) + '%, a loss to ' + Math.round(li / ln * 100) + '%.']);
+    }
+    if (status === 'Bubble' || status === 'Long shot') {
+      var how = status === 'Bubble' ? 'In: stay at or above ' + f1(pace) + ' LP a week and win the close ones. Out: a couple of losses to teams around the cutoff.' : 'A run of wins is not enough alone; teams ahead also have to stall. Their own pace is ' + f1(own) + ' a week against ' + f1(pace) + ' needed.';
+      L.push(['To get in', how]);
+    }
+    if (HW && Object.keys(HW).length && kk >= 1) {
+      var pb = pbaseRows(kk, d), hr = null; if (pb) pb.forEach(function (z) { if (z.team === cur.team) hr = z; });
+      if (hr && hr.n >= 3 && hr.po !== null) L.push(['History', 'Since 2021, teams within 1 LP of ' + cur.lp + ' after Week ' + kk + ' made it ' + Math.round(hr.po * 100) + '% of the time (' + hr.n + ' team seasons).']);
+    } else if (!HW) loadHW(function () {});
+    return { team: cur.team, status: status, cls: cls, po: po, lines: L };
+  }
+  function roadDom(i) {
+    var r = roadOf(i); if (!r) return null;
+    var w = el('div', 'road'), h = el('div', 'road-h');
+    h.appendChild(el('b', '', r.team)); h.appendChild(el('span', 'road-p', Math.round(r.po * 100) + '% playoffs'));
+    h.appendChild(el('span', 'road-s ' + r.cls, r.status)); w.appendChild(h);
+    r.lines.forEach(function (z) { var p = el('p', 'road-l'); p.appendChild(el('b', '', z[0] + ' ')); p.appendChild(document.createTextNode(z[1])); w.appendChild(p); });
+    return w;
+  }
+  (function () {
+    var tip = null, timer = null, curEl = null;
+    function hide() { clearTimeout(timer); curEl = null; if (tip) tip.hidden = true; }
+    function find(n) {
+      var e = n && n.closest ? n.closest('[data-ti], #t tr[data-i], #cards .card[data-i]') : null;
+      if (!e) return null;
+      var v = e.getAttribute('data-ti'); if (v === null) v = e.getAttribute('data-i');
+      var i = parseInt(v, 10); return isNaN(i) ? null : { e: e, i: i };
+    }
+    function show(f) {
+      var dom = roadDom(f.i); if (!dom) return;
+      if (!tip) { tip = el('div', 'roadtip'); tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
+      tip.textContent = ''; tip.appendChild(dom); tip.hidden = false;
+      var rc = f.e.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+      var x0 = Math.min(Math.max(8, rc.left + 16), vw - tw - 8), y0 = rc.bottom + 8;
+      if (y0 + th > vh - 8) y0 = Math.max(8, rc.top - th - 8);
+      tip.style.left = x0 + 'px'; tip.style.top = y0 + 'px';
+    }
+    if (!(window.matchMedia && window.matchMedia('(hover: hover)').matches)) return;
+    document.addEventListener('mouseover', function (ev) {
+      var f = find(ev.target);
+      if (!f) { if (curEl) hide(); return; }
+      if (curEl === f.e) return;
+      clearTimeout(timer); curEl = f.e;
+      timer = setTimeout(function () { if (curEl === f.e) show(f); }, 220);
+    });
+    document.addEventListener('mouseleave', hide);
+    window.addEventListener('scroll', hide, true);
+    document.addEventListener('click', hide);
+  })();
+
   function renderOdds() {
     var host = $('x-odds'), x = luReady(host); if (!x) return;
     var o = getOutlook(x), s = o.sim, d = x.d, ids = o.ids, cur = {};
@@ -875,7 +970,7 @@
     var c6 = s.cut6.slice().sort(function (a, b) { return a - b; }), c2 = s.cut2.slice().sort(function (a, b) { return a - b; });
     var m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
     sec(host, 'Playoff and bye odds', true);
-    barList(host, info.map(function (r) { return { t: r.team, sub: '#' + r.rank + ' · ' + r.now + ' LP · ends ' + r.med, v: r.po * 100, v2: r.bye * 100, txt: pctText(r.po), cls: r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : ''), med: r.med, rank: r.rank, sos: r.sos }; }),
+    barList(host, info.map(function (r) { return { ti: r.i, t: r.team, sub: '#' + r.rank + ' · ' + r.now + ' LP · ends ' + r.med, v: r.po * 100, v2: r.bye * 100, txt: pctText(r.po), cls: r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : ''), med: r.med, rank: r.rank, sos: r.sos }; }),
       { max: 100, key2: 'Bye odds', sorts: [['Playoffs', function (x, y) { return y.v - x.v || y.med - x.med; }], ['Bye', function (x, y) { return y.v2 - x.v2 || y.v - x.v; }], ['Rank now', function (x, y) { return x.rank - y.rank; }], ['Easy schedule', function (x, y) { return (x.sos === null ? 9 : x.sos) - (y.sos === null ? 9 : y.sos); }]] });
     host.appendChild(el('p', 'cap', 'Schedule is the average strength of remaining opponents against the league average, in projected points. Plus means a tougher road, minus means an easier one.'));
     sec(host, 'Path to the playoffs');
@@ -2117,6 +2212,7 @@
       if (t[1] === null) n.textContent = '–'; else countUp(n, t[1], t[2]);
     });
     b.appendChild(tiles);
+    var rd = roadDom(i); if (rd) { b.appendChild(el('div', 'sh-t', 'Road to the playoffs')); b.appendChild(rd); }
     // form chips
     b.appendChild(el('div', 'sh-t', 'Form'));
     var ch = el('div', 'chips');
