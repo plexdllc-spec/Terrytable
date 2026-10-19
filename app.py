@@ -146,9 +146,26 @@ def build_state():
 
 
 # ---------- Routes ----------
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _assets_version():
+    paths = [os.path.join(BASE, "index.html")] + [os.path.join(BASE, "static", f) for f in ("style.css", "app.js", "fx.js")]
+    return str(int(max(os.path.getmtime(p) for p in paths if os.path.exists(p))))
+
+
 @app.route("/")
 def index():
-    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    with open(os.path.join(BASE, "index.html"), encoding="utf-8") as fh:
+        html = fh.read().replace("__V__", _assets_version())
+    return Response(html, mimetype="text/html", headers={"Cache-Control": "no-cache"})
+
+
+@app.route("/assets/<path:name>")
+def assets(name):
+    resp = send_from_directory(os.path.join(BASE, "static"), name)
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
 
 
 SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json")
