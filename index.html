@@ -1655,7 +1655,7 @@
     o.up = !noUp && UP && UP.lineups && UP.week > Math.max.apply(null, x.d.keys) ? UP : null;
     o.ids.forEach(function (i) {
       var arr = H.proj[i].slice();
-      if (o.up && o.up.lineups[i]) { var f = fillOf(o.up.lineups[i]); o.fill[i] = f; arr.push(f.proj); o.f5[i] = f.proj + fm.k * fm.bias[i]; }
+      if (o.up && o.up.lineups[i]) { var tt = o.up.tot && o.up.tot[i], f = tt ? { proj: tt[1], holes: 0, rem: tt[1] - tt[0] <= 0.005 ? 0 : Math.min(1, Math.max(0.04, (tt[1] - tt[0]) / tt[1])) } : fillOf(o.up.lineups[i]); o.fill[i] = f; arr.push(f.proj); o.f5[i] = f.proj + fm.k * fm.bias[i]; }
       o.mu[i] = mean(arr) + fm.k * fm.bias[i];
     });
     o.bt = backtest(H);
@@ -1692,7 +1692,7 @@
       var spA = sp === 0 ? 'PK' : (favA ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (favA ? '+' : '-') + sp.toFixed(1);
       [[a, spA, ml(pa), favA, 'Exp ' + f1(elp(a, pa)) + ' LP'], [b, spB, ml(1 - pa), !favA, 'Exp ' + f1(elp(b, 1 - pa)) + ' LP']].forEach(function (z, k) {
         var r = el('div', 'bk' + (k ? ' b' : '')), nm = el('div', 'tn tl', d.teams[z[0]]);
-        nm.appendChild(el('small', '', f1(o.f5[z[0]]) + ' proj'));
+        nm.appendChild(el('small', '', f1(o.f5[z[0]]) + ' proj' + (up.tot && up.tot[z[0]] ? ' | ' + f1(up.tot[z[0]][0]) + ' so far' : '')));
         var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? (z[3] ? 'WIN' : 'LOSS') : z[1]); c1.appendChild(el('small', '', dn ? 'Final' : 'Spread'));
         var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? f1(o.f5[z[0]]) : z[2]); c2.appendChild(el('small', '', dn ? 'Points' : 'Money'));
         r.appendChild(nm); r.appendChild(c1); r.appendChild(c2); c.appendChild(r);
@@ -1708,7 +1708,7 @@
     sec(host, 'Lineup watch');
     var watch = [];
     ids.forEach(function (i) {
-      (up.lineups[i] || []).forEach(function (p) {
+      (up.tot && up.tot[i] ? [] : (up.lineups[i] || [])).forEach(function (p) {
         if (p.act === undefined && (p.f || p.proj < 1)) watch.push({ team: d.teams[i], p: p, rk: (p.f === 'BYE' || p.f === 'O' || p.f === 'IR' || p.proj < 1) ? 0 : 1 });
       });
     });
@@ -2161,8 +2161,8 @@
 
   // ---- Phase 1 additions: Hall of Fame, Managers, Prizes, Recap, Share ----
   var PRIZE = 50;
-  var MGR26 = { 'Tally SwampDonks': 'DanielM', 'RayGun Raptors': 'Weinjew', 'Joshua Strauch': 'Joshua', "I'll Kupp Your Balls": 'James', 'Jewban': 'Daniel',
-    'Dean Bernies XX': 'Corey', 'Shachar Spiegel Esq.': 'Shaq', 'Yordy': 'Jordan', 'Klitty Titty City Committee': 'Dave', 'Flois': 'nizzy', 'The Shredders': 'Marc', 'Rudyman': 'Aron' };
+  var MGR26 = { 'Tally SwampDonks': 'DanielM', 'RayGun Raptors': 'Weinjew', 'Joshua Strauch': 'Shaq', "I'll Kupp Your Balls": 'James', 'Jewban': 'Daniel',
+    'Dean Bernies XX': 'Corey', 'Shachar Spiegel Esq.': 'Joshua', 'Yordy': 'Jordan', 'Klitty Titty City Committee': 'Dave', 'Flois': 'nizzy', 'The Shredders': 'Marc', 'Rudyman': 'Aron' };
   function histHost(id, tabName, fn) {
     var host = $(id); host.textContent = '';
     if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === tabName) RENDER[tabName](); }); return null; }
