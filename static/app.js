@@ -1184,6 +1184,7 @@
           if (metric === 'titles') add = r.r === 1 ? 1 : 0;
           else if (metric === 'finals') add = r.r <= 2 ? 1 : 0;
           else if (metric === 'playoffs') add = r.r <= 6 ? 1 : 0;
+          else if (metric === 'pf') add = r.pf || 0;
           else add = r.w;
         }
         ser[n].push(prev + add);
@@ -1192,7 +1193,47 @@
     return { ser: ser, names: names, years: years };
   }
 
-  function buildBarRace(stage, names, ser, fmt, labelFor) {
+  function luckSeries(d) {
+    var ser = {}, T = d.teams.length, cum = {};
+    d.teams.forEach(function (t, i) { ser[i] = [0]; cum[i] = 0; });
+    d.keys.forEach(function (n) {
+      var ms = d.weeksObj[n], sc = {}, opp = {}, all = [];
+      ms.forEach(function (m) { sc[m.a] = Math.round(num(m.as) * 100); sc[m.b] = Math.round(num(m.bs) * 100); opp[m.a] = m.b; opp[m.b] = m.a; });
+      Object.keys(sc).forEach(function (i) { all.push(sc[i]); });
+      Object.keys(sc).forEach(function (i) {
+        var mine = sc[i], below = 0, tie = 0;
+        all.forEach(function (v) { if (v < mine) below++; else if (v === mine) tie++; });
+        var exp = (below + 0.5 * (tie - 1)) / (T - 1), o = sc[opp[i]], win = mine > o ? 1 : (mine === o ? 0.5 : 0);
+        cum[i] += win - exp;
+      });
+      d.teams.forEach(function (t, i) { ser[i].push(cum[i]); });
+    });
+    return ser;
+  }
+  function buildLuckRace(stage, names, ser) {
+    var RH = 30, ids = Object.keys(names), rows = {}, mx = 1;
+    ids.forEach(function (i) { ser[i].forEach(function (v) { mx = Math.max(mx, Math.abs(v)); }); });
+    mx = Math.ceil(mx * 2) / 2;
+    stage.style.height = (ids.length * RH + 6) + 'px'; stage.textContent = '';
+    var zero = el('div', 'lzero'); stage.appendChild(zero);
+    ids.forEach(function (i) {
+      var r = el('div', 'rrow lk'), nm = el('div', 'lkn', names[i]), z = el('div', 'lkz'), b = el('div', 'lkb'), v = el('div', 'lkv', '0.0');
+      z.appendChild(b); r.appendChild(nm); r.appendChild(z); r.appendChild(v); stage.appendChild(r); rows[i] = { r: r, b: b, v: v };
+    });
+    RC.upd = function (t) {
+      var cur = ids.map(function (i) { return { i: i, v: lerpAt(ser[i], t) }; });
+      cur.sort(function (a, b) { return (b.v - a.v) || (a.i < b.i ? -1 : 1); });
+      cur.forEach(function (c, k) {
+        var o = rows[c.i], w = 50 * Math.abs(c.v) / mx;
+        o.r.style.transform = 'translateY(' + (k * RH) + 'px)';
+        o.b.style.width = w + '%'; o.b.style.left = c.v >= 0 ? '50%' : (50 - w) + '%';
+        o.v.textContent = (c.v > 0.05 ? '+' : '') + c.v.toFixed(1);
+        o.r.className = 'rrow lk' + (k === 0 && c.v > 0.05 ? ' lead' : '') + (k === cur.length - 1 && c.v < -0.05 ? ' worst' : '') + (c.v < 0 ? ' neg' : '');
+      });
+    };
+  }
+
+  function buildBarRace(stage, names, ser, fmt, labelFor, flagFor) {
     var RH = 30, ids = Object.keys(names), rows = {}, mx = 0;
     ids.forEach(function (i) { mx = Math.max(mx, ser[i][ser[i].length - 1]); });
     mx = mx || 1;
@@ -1202,14 +1243,14 @@
       r.appendChild(b); r.appendChild(n); r.appendChild(v); stage.appendChild(r); rows[i] = { r: r, b: b, v: v };
     });
     RC.upd = function (t) {
-      var cur = ids.map(function (i) { return { i: i, v: lerpAt(ser[i], t) }; });
+      var cur = ids.map(function (i) { return { i: i, v: lerpAt(ser[i], t) }; }), flag = flagFor ? flagFor(t) : null;
       cur.sort(function (a, b) { return (b.v - a.v) || (a.i < b.i ? -1 : 1); });
       cur.forEach(function (c, k) {
         var o = rows[c.i];
         o.r.style.transform = 'translateY(' + (k * RH) + 'px)';
         o.b.style.width = Math.max(0.5, 100 * c.v / mx) + '%';
         o.v.textContent = fmt(c.v);
-        o.r.className = 'rrow' + (k === 0 && c.v > 0 ? ' lead' : '');
+        o.r.className = 'rrow' + (k === 0 && c.v > 0 ? ' lead' : '') + (flag !== null && String(c.i) === String(flag) ? ' flash' : '');
       });
     };
   }
@@ -1278,7 +1319,7 @@
   function renderRaces() {
     var host = $('x-races'); host.textContent = '';
     var d = getData();
-    var views = [['bars', 'Standings race'], ['lines', 'Rank lines'], ['odds', 'Playoff odds'], ['dyn', 'Dynasty 2013 to 2025']];
+    var views = [['bars', 'Standings race'], ['lines', 'Rank lines'], ['odds', 'Playoff odds'], ['luck', 'Luck race'], ['dyn', 'Dynasty 2013 to 2025']];
     var pills = el('div', 'rpills');
     views.forEach(function (v) {
       var b = el('button', '', v[1]); b.setAttribute('aria-pressed', String(RC.view === v[0]));
@@ -1298,7 +1339,7 @@
       host.appendChild(sub);
     }
     if (RC.view === 'dyn') {
-      [['titles', 'Titles'], ['finals', 'Finals trips'], ['playoffs', 'Playoff trips'], ['wins', 'Regular season wins']].forEach(function (m) {
+      [['titles', 'Titles'], ['finals', 'Finals trips'], ['playoffs', 'Playoff trips'], ['wins', 'Regular season wins'], ['pf', 'Points scored']].forEach(function (m) {
         var b = el('button', '', m[1]); b.setAttribute('aria-pressed', String(RC.dmetric === m[0]));
         b.addEventListener('click', function () { RC.dmetric = m[0]; renderRaces(); }); sub.appendChild(b);
       });
@@ -1330,6 +1371,10 @@
       RC.labels = wl;
       buildLines(stage, nm, rk, { yMin: 1, yMax: 12, ticks: [1, 3, 6, 9, 12], fmt: function (v) { return String(v); }, invert: true, xStart: 1, cut: 6.5 });
       start(keys.length, wl, 'Standings rank after each week. Up is better. The dashed line is the playoff cutoff.');
+    } else if (RC.view === 'luck') {
+      var ls = luckSeries(d), nl = {}; d.teams.forEach(function (t, i) { nl[i] = t; });
+      buildLuckRace(stage, nl, ls);
+      start(keys.length, wl, 'Cumulative wins above or below what each team\'s scores deserved, judged against the whole league every week. Right is lucky, left is unlucky. Gold is the luckiest, red is the most snakebit.');
     } else if (RC.view === 'odds') {
       if (!LU || !UP) { stage.appendChild(el('p', 'cap', 'Lineup data is still loading. Open this view again in a moment.')); return; }
       stage.appendChild(el('p', 'cap', 'Computing playoff odds for each week...'));
@@ -1350,7 +1395,8 @@
       var lbl = ['Start'].concat(dy.years);
       var nTop = dy.names.filter(function (n) { return dy.ser[n][dy.ser[n].length - 1] > 0; });
       var nm4 = {}, s4 = {}; nTop.forEach(function (n) { nm4[n] = n; s4[n] = dy.ser[n]; });
-      buildBarRace(stage, nm4, s4, function (v) { return String(Math.round(v)); });
+      var champM = dy.years.map(function (y) { return HIST[y][0].mgr; });
+      buildBarRace(stage, nm4, s4, function (v) { return RC.dmetric === 'pf' ? Math.round(v).toLocaleString() : String(Math.round(v)); }, null, function (t) { var yi = Math.round(t); return yi >= 1 && Math.abs(t - yi) < 0.3 ? champM[yi - 1] : null; });
       RC.labels = lbl;
       var champs = dy.years.map(function (y) { var c = HIST[y][0]; return y + ': ' + c.team + ' (' + c.mgr + ')'; });
       var baseUpd = RC.upd;
