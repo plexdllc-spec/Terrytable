@@ -789,18 +789,6 @@
       return (v > 0 ? '+' : '') + v;
     }
     var box = el('div', 'mugrid');
-    var PKEY = 'tt_pk_' + up.week, PK = {}, pkSum = el('div', 'mu-pk');
-    try { PK = JSON.parse(localStorage.getItem(PKEY) || '{}') || {}; } catch (e) { PK = {}; }
-    var pkRows = [], pkWin = {};
-    function pkRefresh() {
-      var n = 0, hit = 0, miss = 0;
-      pkRows.forEach(function (x) {
-        var on = PK[x.mi] === x.team, w = pkWin[x.mi];
-        x.r.className = 'bk' + (x.k ? ' b' : '') + (on ? ' pk' : '') + (on && w !== undefined ? (w === x.team ? ' hit' : ' miss') : '');
-        if (on) { n++; if (w !== undefined) { if (w === x.team) hit++; else miss++; } }
-      });
-      pkSum.textContent = n ? 'Your picks: ' + n + ' of ' + up.matchups.length + (hit + miss ? ' | ' + hit + ' hit, ' + miss + ' miss so far' : '') : 'Tap a team to make your pick.';
-    }
     function soFar(i) { var now = 0, left = 0; (up.lineups[i] || []).forEach(function (p) { if (p.act !== undefined) now += p.act; else left += p.proj >= 1 ? p.proj : REPL; }); return { now: now, left: left }; }
     up.matchups.forEach(function (m, mi) {
       var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], dn = o.fill[a].rem + o.fill[b].rem === 0, pa = dn ? (fa > fb ? 1 : (fa < fb ? 0 : 0.5)) : phi((fa - fb) / (sg * Math.sqrt(o.fill[a].rem + o.fill[b].rem)));
@@ -814,10 +802,7 @@
         var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? (z[3] ? 'WIN' : 'LOSS') : z[1]); c1.appendChild(el('small', '', dn ? 'Final' : 'Spread'));
         var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? f1(o.f5[z[0]]) : z[2]); c2.appendChild(el('small', '', dn ? 'Points' : 'Money'));
         r.appendChild(nm); r.appendChild(c1); r.appendChild(c2); c.appendChild(r);
-        pkRows.push({ r: r, mi: mi, team: z[0], k: k });
-        r.addEventListener('click', function () { PK[mi] = z[0]; try { localStorage.setItem(PKEY, JSON.stringify(PK)); } catch (e) {} pkRefresh(); });
       });
-      if (dn) pkWin[mi] = fa > fb ? a : (fb > fa ? b : undefined);
       var sa = soFar(a), sb = soFar(b);
       if (sa.now + sb.now > 0) c.appendChild(el('div', 'mu-n', dn ? d.teams[fa > fb ? a : b] + ' won by ' + f1(Math.abs(fa - fb)) : f1(sa.now) + ' to ' + f1(sb.now) + ' so far. Still to play: ' + f1(sa.left) + ' vs ' + f1(sb.left) + '.'));
       var bar = el('div', 'wp'), seg = el('i'); seg.style.width = '0%'; bar.appendChild(seg); c.appendChild(bar);
@@ -827,9 +812,7 @@
       });
       box.appendChild(c);
     });
-    host.appendChild(pkSum);
     host.appendChild(box);
-    pkRefresh();
     sec(host, 'Lineup watch');
     var watch = [];
     ids.forEach(function (i) {
