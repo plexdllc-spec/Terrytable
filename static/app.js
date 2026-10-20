@@ -1146,7 +1146,7 @@
     if (!RC.playing) return;
     RC.raf = requestAnimationFrame(raceTick);
     var dt = Math.min(0.1, (ts - RC.last) / 1000 || 0.016); RC.last = ts;
-    RC.t = Math.min(RC.n, RC.t + dt * RC.speed / 1.3);
+    RC.t = Math.min(RC.n, RC.t + dt * RC.speed * (RC.mult || 1) / 1.3);
     raceDraw();
     if (RC.t >= RC.n) raceStop();
   }
@@ -1173,6 +1173,12 @@
     d.teams.forEach(function (t, i) { ser[i].rank[0] = ser[i].rank[1]; });
     return ser;
   }
+  var WI = ['Playoff result (actual)', 'Best regular season record', 'Most points scored'];
+  function champOf(y, rule) {
+    var rows = HIST[y].filter(function (q) { return q.mgr !== '(hidden)' || rule === 0; });
+    if (rule === 0) return HIST[y].filter(function (q) { return q.r === 1; })[0];
+    return rows.slice().sort(function (a, b) { return rule === 1 ? ((b.w - a.w) || (b.pf - a.pf)) : (b.pf - a.pf); })[0];
+  }
   function dynastySeries(metric) {
     var years = histYears(), ser = {}, names = [];
     var recs = histRecs();
@@ -1181,7 +1187,7 @@
       names.forEach(function (n) {
         var prev = ser[n][ser[n].length - 1], r = HIST[y].filter(function (q) { return q.mgr === n; })[0], add = 0;
         if (r) {
-          if (metric === 'titles') add = r.r === 1 ? 1 : 0;
+          if (metric === 'titles') add = champOf(y, RC.wi || 0).mgr === n ? 1 : 0;
           else if (metric === 'finals') add = r.r <= 2 ? 1 : 0;
           else if (metric === 'playoffs') add = r.r <= 6 ? 1 : 0;
           else if (metric === 'pf') add = r.pf || 0;
@@ -1193,43 +1199,71 @@
     return { ser: ser, names: names, years: years };
   }
 
-  function luckSeries(d) {
-    var ser = {}, T = d.teams.length, cum = {};
-    d.teams.forEach(function (t, i) { ser[i] = [0]; cum[i] = 0; });
-    d.keys.forEach(function (n) {
-      var ms = d.weeksObj[n], sc = {}, opp = {}, all = [];
-      ms.forEach(function (m) { sc[m.a] = Math.round(num(m.as) * 100); sc[m.b] = Math.round(num(m.bs) * 100); opp[m.a] = m.b; opp[m.b] = m.a; });
-      Object.keys(sc).forEach(function (i) { all.push(sc[i]); });
-      Object.keys(sc).forEach(function (i) {
-        var mine = sc[i], below = 0, tie = 0;
-        all.forEach(function (v) { if (v < mine) below++; else if (v === mine) tie++; });
-        var exp = (below + 0.5 * (tie - 1)) / (T - 1), o = sc[opp[i]], win = mine > o ? 1 : (mine === o ? 0.5 : 0);
-        cum[i] += win - exp;
-      });
-      d.teams.forEach(function (t, i) { ser[i].push(cum[i]); });
-    });
-    return ser;
+  function whatIfDiff(dy, rule) {
+    var diffs = [], saved = RC.wi;
+    RC.wi = 0; var act = dynastySeries('titles'); RC.wi = saved;
+    dy.names.forEach(function (n) { var a = act.ser[n][act.ser[n].length - 1], b = dy.ser[n][dy.ser[n].length - 1]; if (a !== b) diffs.push({ n: n, a: a, b: b }); });
+    diffs.sort(function (x, y) { return (y.b - y.a) - (x.b - x.a); });
+    if (!diffs.length) return 'Same champions either way.';
+    return 'Versus the real playoffs: ' + diffs.map(function (x) { return x.n + ' ' + x.a + ' to ' + x.b; }).join(', ') + '.';
   }
-  function buildLuckRace(stage, names, ser) {
-    var RH = 30, ids = Object.keys(names), rows = {}, mx = 1;
-    ids.forEach(function (i) { ser[i].forEach(function (v) { mx = Math.max(mx, Math.abs(v)); }); });
-    mx = Math.ceil(mx * 2) / 2;
-    stage.style.height = (ids.length * RH + 6) + 'px'; stage.textContent = '';
-    var zero = el('div', 'lzero'); stage.appendChild(zero);
-    ids.forEach(function (i) {
-      var r = el('div', 'rrow lk'), nm = el('div', 'lkn', names[i]), z = el('div', 'lkz'), b = el('div', 'lkb'), v = el('div', 'lkv', '0.0');
-      z.appendChild(b); r.appendChild(nm); r.appendChild(z); r.appendChild(v); stage.appendChild(r); rows[i] = { r: r, b: b, v: v };
-    });
-    RC.upd = function (t) {
-      var cur = ids.map(function (i) { return { i: i, v: lerpAt(ser[i], t) }; });
-      cur.sort(function (a, b) { return (b.v - a.v) || (a.i < b.i ? -1 : 1); });
-      cur.forEach(function (c, k) {
-        var o = rows[c.i], w = 50 * Math.abs(c.v) / mx;
-        o.r.style.transform = 'translateY(' + (k * RH) + 'px)';
-        o.b.style.width = w + '%'; o.b.style.left = c.v >= 0 ? '50%' : (50 - w) + '%';
-        o.v.textContent = (c.v > 0.05 ? '+' : '') + c.v.toFixed(1);
-        o.r.className = 'rrow lk' + (k === 0 && c.v > 0.05 ? ' lead' : '') + (k === cur.length - 1 && c.v < -0.05 ? ' worst' : '') + (c.v < 0 ? ' neg' : '');
+
+  function hwAll() {
+    var X = {}, d = getData();
+    Object.keys(HW || {}).forEach(function (y) { X[y] = HW[y]; });
+    if (!d.sample && d.keys.length) {
+      var cy = {};
+      d.keys.forEach(function (n, k) {
+        d.weeksObj[n].forEach(function (m) {
+          [[m.a, m.as], [m.b, m.bs]].forEach(function (z) { var g = MGR26[d.teams[z[0]]]; if (!g) return; cy[g] = cy[g] || { p: [] }; cy[g].p[k] = num(z[1]); });
+        });
       });
+      X['2026'] = cy;
+    }
+    return X;
+  }
+  function duelMgrs(S) {
+    var o = {};
+    Object.keys(S).forEach(function (y) { Object.keys(S[y]).forEach(function (m) { if (m !== '(hidden)') o[m] = (o[m] || 0) + 1; }); });
+    return Object.keys(o).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+  }
+  function duelSteps(S, A, B, scope) {
+    var st = [];
+    Object.keys(S).sort().forEach(function (y) {
+      if (scope !== 'all' && scope !== y) return;
+      var a = S[y][A], b = S[y][B]; if (!a || !b) return;
+      for (var k = 0; k < Math.max(a.p.length, b.p.length); k++) if (a.p[k] > 0 && b.p[k] > 0) st.push({ y: y, wk: k + 1, a: a.p[k], b: b.p[k] });
+    });
+    return st;
+  }
+  function buildDuel(stage, st, A, B) {
+    var n = st.length, sa = [0], sb = [0], wa = [0], wb = [0], gap = [0], mx = 1, k;
+    for (k = 0; k < n; k++) {
+      sa.push(sa[k] + st[k].a); sb.push(sb[k] + st[k].b);
+      wa.push(wa[k] + (st[k].a > st[k].b ? 1 : 0)); wb.push(wb[k] + (st[k].b > st[k].a ? 1 : 0));
+      gap.push(sa[k + 1] - sb[k + 1]); mx = Math.max(mx, Math.abs(gap[k + 1]));
+    }
+    stage.textContent = ''; stage.style.height = 'auto';
+    var box = el('div', 'duel'), head = el('div', 'dl-head'), na = el('div', 'dl-n a', A), nb = el('div', 'dl-n b', B);
+    var ta = el('div', 'dl-t', '0'), tb = el('div', 'dl-t', '0');
+    var ca = el('div', 'dl-c'), cb = el('div', 'dl-c'); ca.appendChild(na); ca.appendChild(ta); cb.appendChild(nb); cb.appendChild(tb);
+    head.appendChild(ca); head.appendChild(cb); box.appendChild(head);
+    var track = el('div', 'dl-track'), fill = el('div', 'dl-fill'), tick = el('div', 'dl-tick'); track.appendChild(fill); track.appendChild(tick); box.appendChild(track);
+    var gl = el('div', 'dl-gap', 'Even'); box.appendChild(gl);
+    var tally = el('div', 'dl-tally'); box.appendChild(tally);
+    var last = el('div', 'dl-last'); box.appendChild(last);
+    stage.appendChild(box);
+    RC.upd = function (t) {
+      var g = lerpAt(gap, t), i = Math.round(t);
+      var w = 50 * Math.abs(g) / mx;
+      fill.style.width = w + '%'; fill.style.left = g >= 0 ? '50%' : (50 - w) + '%';
+      fill.className = 'dl-fill' + (g >= 0 ? ' a' : ' b');
+      ta.textContent = Math.round(lerpAt(sa, t)).toLocaleString(); tb.textContent = Math.round(lerpAt(sb, t)).toLocaleString();
+      na.className = 'dl-n a' + (g > 0.5 ? ' up' : ''); nb.className = 'dl-n b' + (g < -0.5 ? ' up' : '');
+      gl.textContent = Math.abs(g) < 0.5 ? 'Even' : (g > 0 ? A : B) + ' leads by ' + f1(Math.abs(g)) + ' points';
+      tally.textContent = 'Higher score in the same week: ' + A + ' ' + wa[i] + ', ' + B + ' ' + wb[i] + (i - wa[i] - wb[i] ? ', ties ' + (i - wa[i] - wb[i]) : '');
+      if (i >= 1) { var q = st[i - 1]; last.textContent = q.y + ' week ' + q.wk + ': ' + A + ' ' + f1(q.a) + ', ' + B + ' ' + f1(q.b) + (q.a > q.b ? ' (' + A + ' by ' : ' (' + B + ' by ') + f1(Math.abs(q.a - q.b)) + ')'; }
+      else last.textContent = 'Press Play.';
     };
   }
 
@@ -1319,7 +1353,7 @@
   function renderRaces() {
     var host = $('x-races'); host.textContent = '';
     var d = getData();
-    var views = [['bars', 'Standings race'], ['lines', 'Rank lines'], ['odds', 'Playoff odds'], ['luck', 'Luck race'], ['dyn', 'Dynasty 2013 to 2025']];
+    var views = [['bars', 'Standings race'], ['lines', 'Rank lines'], ['odds', 'Playoff odds'], ['duel', 'Manager duel'], ['dyn', 'Dynasty 2013 to 2025']];
     var pills = el('div', 'rpills');
     views.forEach(function (v) {
       var b = el('button', '', v[1]); b.setAttribute('aria-pressed', String(RC.view === v[0]));
@@ -1329,7 +1363,8 @@
     host.appendChild(pills);
     var needHist = RC.view === 'dyn';
     if (needHist && !HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'races') renderRaces(); }); return; }
-    if (!needHist && d.sample) { host.appendChild(el('p', 'cap', 'Races appear once real weeks are loaded.')); return; }
+    if (RC.view === 'duel' && !HW) { host.appendChild(el('p', 'cap', 'Loading weekly history...')); loadHW(function () { if (tab === 'races') renderRaces(); }); return; }
+    if (!needHist && RC.view !== 'duel' && d.sample) { host.appendChild(el('p', 'cap', 'Races appear once real weeks are loaded.')); return; }
     var sub = el('div', 'rpills'), caption = el('div', 'rcap'), stage = el('div', 'race');
     if (RC.view === 'bars') {
       [['lp', 'League points'], ['pts', 'Fantasy points']].forEach(function (m) {
@@ -1344,6 +1379,12 @@
         b.addEventListener('click', function () { RC.dmetric = m[0]; renderRaces(); }); sub.appendChild(b);
       });
       host.appendChild(sub);
+      if (RC.dmetric === 'titles') {
+        var wr = el('div', 'wirow'), wl2 = el('label', 'meta', 'What if titles went to'), ws = el('input'), wt = el('span', 'wit', WI[RC.wi || 0]);
+        ws.type = 'range'; ws.min = 0; ws.max = 2; ws.step = 1; ws.value = RC.wi || 0; ws.setAttribute('aria-label', 'What if titles went to');
+        ws.addEventListener('input', function () { RC.wi = parseInt(ws.value, 10); raceStop(); renderRaces(); });
+        wr.appendChild(wl2); wr.appendChild(ws); wr.appendChild(wt); host.appendChild(wr);
+      }
     }
     var ctl = el('div', 'rctl'), play = el('button', 'btn', RC.playing ? 'Pause' : 'Play'); play.id = 'rplay'; play.addEventListener('click', racePlay);
     var sl = el('input'); sl.type = 'range'; sl.id = 'rslide'; sl.min = 0; sl.step = 'any';
@@ -1352,8 +1393,8 @@
     ctl.appendChild(play); ctl.appendChild(sl); ctl.appendChild(lab); ctl.appendChild(spd);
     host.appendChild(ctl); host.appendChild(stage); host.appendChild(caption);
     sl.addEventListener('input', function () { raceStop(); RC.t = parseFloat(sl.value); raceDraw(); });
-    function start(n, labels, note) {
-      RC.n = n; RC.labels = labels; sl.max = n; RC.t = Math.min(RC.t, n); caption.textContent = note || ''; raceDraw();
+    function start(n, labels, note, mult) {
+      RC.mult = mult || 1; RC.n = n; RC.labels = labels; sl.max = n; RC.t = Math.min(RC.t, n); caption.textContent = note || ''; raceDraw();
       if (!RC.playing && RC.t === 0 && !RC.started) { RC.started = true; }
     }
     var keys = d.keys, wl = ['Start'].concat(keys.map(function (n) { return 'Week ' + n; }));
@@ -1371,10 +1412,30 @@
       RC.labels = wl;
       buildLines(stage, nm, rk, { yMin: 1, yMax: 12, ticks: [1, 3, 6, 9, 12], fmt: function (v) { return String(v); }, invert: true, xStart: 1, cut: 6.5 });
       start(keys.length, wl, 'Standings rank after each week. Up is better. The dashed line is the playoff cutoff.');
-    } else if (RC.view === 'luck') {
-      var ls = luckSeries(d), nl = {}; d.teams.forEach(function (t, i) { nl[i] = t; });
-      buildLuckRace(stage, nl, ls);
-      start(keys.length, wl, 'Cumulative wins above or below what each team\'s scores deserved, judged against the whole league every week. Right is lucky, left is unlucky. Gold is the luckiest, red is the most snakebit.');
+    } else if (RC.view === 'duel') {
+      var S = hwAll(), mg = duelMgrs(S);
+      if (!RC.dA || mg.indexOf(RC.dA) < 0) RC.dA = mg.indexOf('James') >= 0 ? 'James' : mg[0];
+      if (!RC.dB || mg.indexOf(RC.dB) < 0 || RC.dB === RC.dA) RC.dB = mg.filter(function (m) { return m !== RC.dA; })[0];
+      var dsc = RC.dS || 'all';
+      var yrs = Object.keys(S).sort().filter(function (y) { return S[y][RC.dA] && S[y][RC.dB]; });
+      if (dsc !== 'all' && yrs.indexOf(dsc) < 0) dsc = 'all';
+      RC.dS = dsc;
+      var dbar = el('div', 'pick');
+      function dsel(label, vals, cur, fn, txt) {
+        var l = el('label', 'meta', label), sx = el('select');
+        vals.forEach(function (v) { var o = el('option', '', txt ? txt(v) : v); o.value = v; if (v === cur) o.selected = true; sx.appendChild(o); });
+        sx.addEventListener('change', function () { raceStop(); fn(sx.value); RC.t = 0; renderRaces(); });
+        dbar.appendChild(l); dbar.appendChild(sx);
+      }
+      dsel('Manager', mg, RC.dA, function (v) { RC.dA = v; });
+      dsel('vs', mg.filter(function (m) { return m !== RC.dA; }), RC.dB, function (v) { RC.dB = v; });
+      dsel('Seasons', ['all'].concat(yrs), RC.dS, function (v) { RC.dS = v; }, function (v) { return v === 'all' ? 'All seasons' : v; });
+      host.insertBefore(dbar, ctl);
+      var dst = duelSteps(S, RC.dA, RC.dB, RC.dS);
+      if (!dst.length) { stage.appendChild(el('p', 'cap', 'These two managers share no weeks of history.')); return; }
+      var dl = ['Start'].concat(dst.map(function (q) { return q.y + ' W' + q.wk; }));
+      buildDuel(stage, dst, RC.dA, RC.dB);
+      start(dst.length, dl, 'Each week adds both managers\' scores to a running total. This compares scores in the same week, not games they played against each other, because history stores scores but not opponents.', Math.max(1, dst.length / 20));
     } else if (RC.view === 'odds') {
       if (!LU || !UP) { stage.appendChild(el('p', 'cap', 'Lineup data is still loading. Open this view again in a moment.')); return; }
       stage.appendChild(el('p', 'cap', 'Computing playoff odds for each week...'));
@@ -1395,13 +1456,14 @@
       var lbl = ['Start'].concat(dy.years);
       var nTop = dy.names.filter(function (n) { return dy.ser[n][dy.ser[n].length - 1] > 0; });
       var nm4 = {}, s4 = {}; nTop.forEach(function (n) { nm4[n] = n; s4[n] = dy.ser[n]; });
-      var champM = dy.years.map(function (y) { return HIST[y][0].mgr; });
+      var wi = RC.dmetric === 'titles' ? (RC.wi || 0) : 0, champM = dy.years.map(function (y) { return champOf(y, wi).mgr; });
       buildBarRace(stage, nm4, s4, function (v) { return RC.dmetric === 'pf' ? Math.round(v).toLocaleString() : String(Math.round(v)); }, null, function (t) { var yi = Math.round(t); return yi >= 1 && Math.abs(t - yi) < 0.3 ? champM[yi - 1] : null; });
       RC.labels = lbl;
-      var champs = dy.years.map(function (y) { var c = HIST[y][0]; return y + ': ' + c.team + ' (' + c.mgr + ')'; });
+      var champs = dy.years.map(function (y) { var c = champOf(y, wi); return y + ': ' + c.team + ' (' + c.mgr + ')'; });
       var baseUpd = RC.upd;
-      RC.upd = function (t) { baseUpd(t); var yi = Math.round(t); caption.textContent = yi >= 1 ? 'Champion ' + champs[yi - 1] : 'Counted season by season from final standings. Press Play.'; };
+      RC.upd = function (t) { baseUpd(t); var yi = Math.round(t); caption.textContent = yi >= 1 ? (wi ? 'Title under this rule ' : 'Champion ') + champs[yi - 1] : 'Counted season by season from final standings. Press Play.'; };
       start(dy.years.length, lbl, '');
+      if (wi) host.appendChild(el('p', 'cap', whatIfDiff(dy, wi)));
     }
   }
 

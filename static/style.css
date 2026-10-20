@@ -485,15 +485,23 @@
 [data-ti], #t tr[data-i] { cursor: help; }
 .sh-b .road-h b { display: none; }
 
-  .rrow.lk { height: 28px; }
-  .rrow.lk .lkn { position: absolute; left: 0; top: 0; width: 40%; line-height: 24px; font-weight: 700; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
-  .rrow.lk .lkz { position: absolute; left: 40%; right: 38px; top: 0; bottom: 4px; }
-  .rrow.lk .lkb { position: absolute; top: 0; bottom: 0; background: var(--garnet-hi); }
-  .rrow.lk.neg .lkb { background: #6d5663; }
-  .rrow.lk.lead .lkb { background: var(--gold); }
-  .rrow.lk.worst .lkb { background: var(--neg); }
-  .rrow.lk .lkv { position: absolute; right: 0; top: 0; line-height: 24px; font-weight: 700; font-size: .88rem; width: 36px; text-align: right; }
-  .lzero { position: absolute; top: 0; bottom: 4px; left: calc(40% + (100% - 40% - 38px) / 2); width: 1px; background: var(--line); }
   .rrow.flash .rbar { box-shadow: 0 0 14px 3px var(--gold); animation: rflash .9s ease-out; }
   @keyframes rflash { 0% { filter: brightness(2); } 100% { filter: brightness(1); } }
   @media (prefers-reduced-motion: reduce) { .rrow.flash .rbar { animation: none; } }
+
+  .wirow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 10px; }
+  .wirow input[type=range] { width: 120px; accent-color: var(--gold); }
+  .wit { color: var(--gold-soft); font-weight: 700; font-size: .92rem; }
+  .duel { padding: 4px 0; }
+  .dl-head { display: flex; justify-content: space-between; gap: 12px; }
+  .dl-c:last-child { text-align: right; }
+  .dl-n { font: 700 1.05rem var(--f-disp); letter-spacing: .03em; color: var(--muted); }
+  .dl-n.up { color: var(--gold); }
+  .dl-t { font: 800 2rem var(--f-disp); color: var(--ink); line-height: 1.1; }
+  .dl-track { position: relative; height: 22px; background: rgba(0,0,0,.35); border: 1px solid var(--line); margin: 10px 0 6px; }
+  .dl-fill { position: absolute; top: 0; bottom: 0; background: var(--garnet-hi); }
+  .dl-fill.a { background: var(--gold); }
+  .dl-fill.b { background: #e0457a; }
+  .dl-tick { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .6; }
+  .dl-gap { text-align: center; font-weight: 700; color: var(--gold-soft); min-height: 1.3em; }
+  .dl-tally, .dl-last { color: var(--muted); font-size: .92rem; margin-top: 6px; text-align: center; }
