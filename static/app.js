@@ -1411,7 +1411,7 @@
     }
   }
 
-  // ---- Phase 1 additions: Hall of Fame, Managers, Prizes, Recap, Share ----
+  // ---- Phase 1 additions: Hall of Fame, Managers, Prizes, Recap ----
   var PRIZE = 50;
   var MGR26 = { 'Tally SwampDonks': 'DanielM', 'RayGun Raptors': 'Weinjew', 'In The End We Have Forever': 'Shaq', "I'll Kupp Your Balls": 'James', 'Jewban': 'Daniel',
     'Dean Bernies XX': 'Corey', 'Feet': 'Joshua', 'Yordy': 'Jordan', 'Klitty Titty City Committee': 'Dave', 'Flois': 'nizzy', 'The Shredders': 'Marc', 'Rudyman': 'Aron' };

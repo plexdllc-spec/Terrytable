@@ -383,7 +383,6 @@
   .mu-r span:nth-child(2) { text-align: center; color: var(--muted); font-size: .85rem; }
   .mu-r span:last-child { text-align: right; }
   .prizeitem a.pn { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
-  .sharecv { width: 100%; max-width: 540px; height: auto; display: block; margin: 0 auto; }
   .dot2l { stroke: rgba(201,169,178,.28); }
   .selline { stroke: var(--gold); }
   .rctl { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; flex-wrap: wrap; }
