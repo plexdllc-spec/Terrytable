@@ -260,10 +260,8 @@
   .chartbox { margin-top: 20px; max-width: 680px; }
   .chartbox svg { width: 100%; height: auto; display: block; }
   .ax { fill: var(--muted); font: 500 12px var(--f-body); }
-  .vl { fill: var(--ink); font: 700 13px var(--f-body); }
   .grid { stroke: var(--line); stroke-width: 1; }
   .s-sel { stroke: var(--gold); stroke-width: 3.2; fill: none; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(242, 182, 50, .6)); }
-  .s-oth { stroke: var(--muted); stroke-width: 1.4; fill: none; opacity: .4; }
   .s-avg { stroke: var(--garnet-hi); stroke-width: 2.4; fill: none; stroke-dasharray: 7 5; }
   .dot { fill: var(--gold); stroke: var(--bg); stroke-width: 2; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: .9rem; margin-top: 6px; }
@@ -271,7 +269,6 @@
   .legend i.avg { border-top: 3px dashed var(--garnet-hi); }
   .legend i.oth { border-top: 2px solid var(--muted); opacity: .6; }
   .weeks { display: flex; flex-wrap: wrap; gap: 8px; }
-  .avgitem { display: flex; align-items: baseline; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--garnet-hi); padding: 6px 14px; }
   .avgitem .pw { font: 600 1rem var(--f-disp); color: var(--muted); }
   .avgitem .ps { font: 700 1.3rem var(--f-disp); color: var(--gold); }
 
@@ -379,9 +376,6 @@
   .mu-h .v { color: var(--muted); font: 500 .9rem var(--f-body); }
   .wp { display: flex; height: 10px; overflow: hidden; background: var(--garnet-hi); margin: 10px 0 8px; }
   .wp i { display: block; background: var(--gold); }
-  .mu-r { display: grid; grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr); gap: 8px; font-size: .95rem; padding-top: 4px; margin-top: 4px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-  .mu-r span:nth-child(2) { text-align: center; color: var(--muted); font-size: .85rem; }
-  .mu-r span:last-child { text-align: right; }
   .prizeitem a.pn { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
   .dot2l { stroke: rgba(201,169,178,.28); }
   .selline { stroke: var(--gold); }
@@ -447,22 +441,9 @@
   .bl-key { display: flex; gap: 14px; color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
   .bl-key b { display: inline-block; width: 18px; height: 5px; background: var(--gold-soft); margin-right: 6px; vertical-align: middle; }
   @media (max-width: 560px) { .blr { grid-template-columns: minmax(0, 9.4rem) minmax(0, 1fr) 2.9rem; gap: 8px; } .blr .nm small { display: none; } }
-  .nteam { border: 1px solid var(--line); background: var(--panel); margin: 0 0 8px; }
-  .nteam summary { cursor: pointer; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; list-style: none; border-left: 3px solid var(--gold); }
-  .nteam summary::-webkit-details-marker { display: none; }
-  .nteam[open] summary { background: var(--panel2); }
-  .nt-n { font: 800 1.15rem var(--f-disp); }
-  .nt-c { color: var(--gold-soft); font-size: .9rem; align-self: center; }
-  .nt-b { padding: 4px 14px 10px; }
   .ni { padding: 9px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; white-space: normal; }
   .ni:first-child { border-top: 0; }
-  .ni-h { font-weight: 700; }
-  .nt-b > .ni-h { margin-top: 12px; color: var(--gold); }
-  .nt-b > .ni-h:first-child { margin-top: 4px; }
-  a.ni-h { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--gold-soft); }
   .ni-s.neg { color: var(--neg); font-weight: 700; }
-  .ni-s { color: var(--gold-soft); font-size: .88rem; margin-top: 2px; }
-  .ni-t { color: var(--muted); font-size: .9rem; margin-top: 2px; }
   .prizeitem { flex-wrap: wrap; overflow-wrap: anywhere; }
   .mu-n { color: var(--gold-soft); font-size: .88rem; margin-top: 6px; }
   .dot2 { fill: var(--muted); opacity: .5; }
@@ -504,3 +485,4 @@
   .dl-tick { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .6; }
   .dl-gap { text-align: center; font-weight: 700; color: var(--gold-soft); min-height: 1.3em; }
   .dl-tally, .dl-last { color: var(--muted); font-size: .92rem; margin-top: 6px; text-align: center; }
+@media (max-width: 760px) { #subnav { padding-right: 28px; -webkit-mask-image: linear-gradient(to right, #000 86%, transparent); mask-image: linear-gradient(to right, #000 86%, transparent); } }

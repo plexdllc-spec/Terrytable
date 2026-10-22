@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'races', 'playoffs', 'analytics', 'outlook', 'matchups', 'alltime', 'profiles'];
+  var TABS = ['table', 'races', 'playoffs', 'analytics', 'outlook', 'matchups', 'alltime'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -595,45 +595,44 @@
     hotCold(host, all, d);
   }
 
-  function renderAwards() {
-    var host = $('x-awards'), x = luReady(host); if (!x) return;
+  function weekAwards(x, n) {
     var d = x.d, all = starters(x);
-    x.keys.slice().reverse().forEach(function (n, k) {
-      sec(host, 'Week ' + n, k === 0);
-      var ps = all.filter(function (p) { return p.n === n; });
-      var topP = ps.slice().sort(function (a, b) { return b.pts - a.pts; })[0];
-      var bustP = ps.filter(function (p) { return p.proj >= 10; })
-        .sort(function (a, b) { return (a.pts - a.proj) - (b.pts - b.proj); })[0];
-      var ms = d.weeksObj[n].map(function (m) {
-        var sa = num(m.as), sb = num(m.bs), wa = sa > sb;
-        return { w: wa ? m.a : m.b, l: wa ? m.b : m.a, ws: wa ? sa : sb, ls: wa ? sb : sa, mg: Math.abs(sa - sb) };
-      }).filter(function (m) { return m.mg > 0; });
-      var items = [['Top starter', topP.name + ' (' + d.teams[topP.t] + ')', f2(topP.pts)]];
-      if (bustP) items.push(['Bust', bustP.name + ' (' + d.teams[bustP.t] + ')', f2(bustP.pts) + ' vs ' + f2(bustP.proj) + ' proj']);
-      if (ms.length) {
-        var big = ms.slice().sort(function (a, b) { return b.mg - a.mg; })[0];
-        var small = ms.slice().sort(function (a, b) { return a.mg - b.mg; })[0];
-        var luck = ms.slice().sort(function (a, b) { return a.ws - b.ws; })[0];
-        var unl = ms.slice().sort(function (a, b) { return b.ls - a.ls; })[0];
-        items.push(['Blowout', d.teams[big.w] + ' over ' + d.teams[big.l], 'by ' + f2(big.mg)]);
-        items.push(['Closest game', d.teams[small.w] + ' over ' + d.teams[small.l], 'by ' + f2(small.mg)]);
-        items.push(['Lucky win', d.teams[luck.w] + ' beat ' + d.teams[luck.l], f2(luck.ws)]);
-        items.push(['Unlucky loss', d.teams[unl.l] + ' lost to ' + d.teams[unl.w], f2(unl.ls)]);
-      }
-      var box = el('div', 'matchups');
-      items.forEach(function (it) {
-        var row = el('div', 'prizeitem');
-        var pw = el('span', 'pw', it[0]); pw.style.minWidth = '6.4rem';
-        row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); row.appendChild(el('span', 'ps', it[2]));
-        box.appendChild(row);
-      });
-      host.appendChild(box);
+    var ps = all.filter(function (p) { return p.n === n; });
+    var topP = ps.slice().sort(function (a, b) { return b.pts - a.pts; })[0];
+    var bustP = ps.filter(function (p) { return p.proj >= 10; })
+      .sort(function (a, b) { return (a.pts - a.proj) - (b.pts - b.proj); })[0];
+    var ms = d.weeksObj[n].map(function (m) {
+      var sa = num(m.as), sb = num(m.bs), wa = sa > sb;
+      return { w: wa ? m.a : m.b, l: wa ? m.b : m.a, ws: wa ? sa : sb, ls: wa ? sb : sa, mg: Math.abs(sa - sb) };
+    }).filter(function (m) { return m.mg > 0; });
+    var items = [];
+    if (topP) items.push(['Top starter', topP.name + ' (' + d.teams[topP.t] + ')', f2(topP.pts)]);
+    if (bustP) items.push(['Bust', bustP.name + ' (' + d.teams[bustP.t] + ')', f2(bustP.pts) + ' vs ' + f2(bustP.proj) + ' proj']);
+    if (ms.length) {
+      var luck = ms.slice().sort(function (a, b) { return a.ws - b.ws; })[0];
+      var unl = ms.slice().sort(function (a, b) { return b.ls - a.ls; })[0];
+      items.push(['Lucky win', d.teams[luck.w] + ' beat ' + d.teams[luck.l], f2(luck.ws)]);
+      items.push(['Unlucky loss', d.teams[unl.l] + ' lost to ' + d.teams[unl.w], f2(unl.ls)]);
+    }
+    return items;
+  }
+  function renderHighlights() {
+    var host = $('x-highlights'), x = luReady(host); if (!x) return;
+    var n = x.keys[x.keys.length - 1];
+    sec(host, 'Week ' + n + ' highlights', true);
+    var box = el('div', 'matchups');
+    weekAwards(x, n).forEach(function (it) {
+      var row = el('div', 'prizeitem');
+      var pw = el('span', 'pw', it[0]); pw.style.minWidth = '6.4rem';
+      row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); row.appendChild(el('span', 'ps', it[2]));
+      box.appendChild(row);
     });
+    host.appendChild(box);
   }
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['matchups', 'analytics', 'outlook', 'playoffs'];
+  var LUTABS = ['table', 'matchups', 'analytics', 'outlook', 'playoffs'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -705,6 +704,7 @@
     return out;
   }
 
+  var TEAM_SD = 5; // season-long error in each team strength, added to every remaining week mean. Widens the tails so long shots are not undersold.
   function simulate(x, o) {
     var N = o.simN || 5000, ids = o.ids, T = ids.length, sigma = o.fm.sigma, r = mulberry32(20261006);
     var start = Math.max.apply(null, x.d.keys) + 1, cur = {}, sched = fullSched();
@@ -713,15 +713,15 @@
     ids.forEach(function (i) { res.g1[i] = new Int8Array(N); res.inP[i] = new Uint8Array(N); });
     ids.forEach(function (i) { res.pos[i] = []; for (var k = 0; k < T; k++) res.pos[i].push(0); res.lp[i] = []; });
     for (var s = 0; s < N; s++) {
-      var lp = {}, pts = {};
+      var lp = {}, pts = {}, off = {};
       var base = {};
-      ids.forEach(function (i) { lp[i] = cur[i].lp; pts[i] = cur[i].pts; base[i] = lp[i]; });
+      ids.forEach(function (i) { lp[i] = cur[i].lp; pts[i] = cur[i].pts; base[i] = lp[i]; off[i] = TEAM_SD * gauss(r); });
       for (var w = start; w <= WEEKS; w++) {
         var sc = {}, tot = 0;
         ids.forEach(function (i) {
           var mu = (o.up && w === o.up.week && o.f5[i] !== undefined) ? o.f5[i] : o.mu[i];
           var rm = (o.up && w === o.up.week && o.fill[i]) ? Math.sqrt(o.fill[i].rem) : 1;
-          sc[i] = mu + sigma * rm * gauss(r); tot += sc[i];
+          sc[i] = mu + off[i] + sigma * rm * gauss(r); tot += sc[i];
         });
         var avg = tot / T, pairs = sched[w], q;
         if (!pairs) {
@@ -1124,12 +1124,18 @@
     return rows.slice().sort(function (a, b) { return rule === 1 ? ((b.w - a.w) || (b.pf - a.pf)) : (b.pf - a.pf); })[0];
   }
   function dynastySeries(metric) {
-    var years = histYears(), ser = {}, names = [];
+    var years = histYears(), ser = {}, names = [], cum = {};
     var recs = histRecs();
-    recs.forEach(function (x) { if (x.r.mgr !== '(hidden)' && !ser[x.r.mgr]) { ser[x.r.mgr] = [0]; names.push(x.r.mgr); } });
+    recs.forEach(function (x) { if (x.r.mgr !== '(hidden)' && !ser[x.r.mgr]) { ser[x.r.mgr] = [0]; cum[x.r.mgr] = { w: 0, g: 0, p: 0 }; names.push(x.r.mgr); } });
     years.forEach(function (y) {
       names.forEach(function (n) {
         var prev = ser[n][ser[n].length - 1], r = HIST[y].filter(function (q) { return q.mgr === n; })[0], add = 0;
+        if (metric === 'winpct' || metric === 'ppg') {
+          var c = cum[n];
+          if (r) { c.w += r.w; c.g += r.w + r.l; c.p += r.pf || 0; }
+          ser[n].push(!c.g ? 0 : (metric === 'winpct' ? 100 * c.w / c.g : c.p / c.g));
+          return;
+        }
         if (r) {
           if (metric === 'titles') add = champOf(y, RC.wi || 0).mgr === n ? 1 : 0;
           else if (metric === 'finals') add = r.r <= 2 ? 1 : 0;
@@ -1165,6 +1171,22 @@
       X['2026'] = cy;
     }
     return X;
+  }
+  function headToHead(A, B) {
+    var d = getData(); if (d.sample || !d.keys.length) return 'Head to head: no games loaded yet.';
+    var ia = -1, ib = -1, wa = 0, wb = 0, gm = 0;
+    d.teams.forEach(function (t, i) { if (MGR26[t] === A) ia = i; if (MGR26[t] === B) ib = i; });
+    if (ia < 0 || ib < 0) return 'Head to head: ' + A + ' and ' + B + ' are not both in the current league.';
+    Object.keys(d.weeksObj).forEach(function (n) {
+      d.weeksObj[n].forEach(function (m) {
+        if (!((m.a === ia && m.b === ib) || (m.a === ib && m.b === ia))) return;
+        var sa = num(m.as), sb = num(m.bs);
+        if (sa === sb) return;
+        gm++; if ((m.a === ia) === (sa > sb)) wa++; else wb++;
+      });
+    });
+    if (!gm) return 'Head to head this season: no games yet between them.';
+    return 'Head to head this season: ' + A + ' ' + wa + ', ' + B + ' ' + wb + ' (' + gm + ' game' + (gm > 1 ? 's' : '') + ').';
   }
   function duelMgrs(S) {
     var o = {};
@@ -1318,7 +1340,7 @@
       host.appendChild(sub);
     }
     if (RC.view === 'dyn') {
-      [['titles', 'Titles'], ['finals', 'Finals trips'], ['playoffs', 'Playoff trips'], ['wins', 'Regular season wins'], ['pf', 'Points scored']].forEach(function (m) {
+      [['titles', 'Titles'], ['finals', 'Finals trips'], ['playoffs', 'Playoff trips'], ['wins', 'Regular season wins'], ['pf', 'Points scored'], ['winpct', 'Win %'], ['ppg', 'Points per game']].forEach(function (m) {
         var b = el('button', '', m[1]); b.setAttribute('aria-pressed', String(RC.dmetric === m[0]));
         b.addEventListener('click', function () { RC.dmetric = m[0]; renderRaces(); }); sub.appendChild(b);
       });
@@ -1379,6 +1401,8 @@
       if (!dst.length) { stage.appendChild(el('p', 'cap', 'These two managers share no weeks of history.')); return; }
       var dl = ['Start'].concat(dst.map(function (q) { return q.y + ' W' + q.wk; }));
       buildDuel(stage, dst, RC.dA, RC.dB);
+      var h2 = headToHead(RC.dA, RC.dB);
+      host.appendChild(el('p', 'cap', h2));
       start(dst.length, dl, 'Each week adds both managers\' scores to a running total. This compares scores in the same week, not games they played against each other, because history stores scores but not opponents.', Math.max(1, dst.length / 20));
     } else if (RC.view === 'odds') {
       if (!LU || !UP) { stage.appendChild(el('p', 'cap', 'Lineup data is still loading. Open this view again in a moment.')); return; }
@@ -1401,7 +1425,7 @@
       var nTop = dy.names.filter(function (n) { return dy.ser[n][dy.ser[n].length - 1] > 0; });
       var nm4 = {}, s4 = {}; nTop.forEach(function (n) { nm4[n] = n; s4[n] = dy.ser[n]; });
       var wi = RC.dmetric === 'titles' ? (RC.wi || 0) : 0, champM = dy.years.map(function (y) { return champOf(y, wi).mgr; });
-      buildBarRace(stage, nm4, s4, function (v) { return RC.dmetric === 'pf' ? Math.round(v).toLocaleString() : String(Math.round(v)); }, null, function (t) { var yi = Math.round(t); return yi >= 1 && Math.abs(t - yi) < 0.3 ? champM[yi - 1] : null; });
+      buildBarRace(stage, nm4, s4, function (v) { return RC.dmetric === 'pf' ? Math.round(v).toLocaleString() : (RC.dmetric === 'winpct' ? v.toFixed(1) + '%' : (RC.dmetric === 'ppg' ? v.toFixed(1) : String(Math.round(v)))); }, null, function (t) { var yi = Math.round(t); return yi >= 1 && Math.abs(t - yi) < 0.3 ? champM[yi - 1] : null; });
       RC.labels = lbl;
       var champs = dy.years.map(function (y) { var c = champOf(y, wi); return y + ': ' + c.team + ' (' + c.mgr + ')'; });
       var baseUpd = RC.upd;
@@ -1450,7 +1474,7 @@
   }
 
   function renderProfiles() {
-    var host = histHost('x-profiles', 'profiles'); if (!host) return;
+    var host = histHost('x-profiles', 'alltime'); if (!host) return;
     var years = histYears(), recs = histRecs(), by = {};
     recs.forEach(function (x) { if (x.r.mgr === '(hidden)') return; (by[x.r.mgr] || (by[x.r.mgr] = [])).push(x); });
     var names = Object.keys(by).sort(function (a, b) {
@@ -1831,14 +1855,13 @@
 
   // ---- Tabs, view mode, status ----
   var RENDER = {
-    table: function () { renderTable(); },
+    table: function () { renderTable(); renderHighlights(); },
     races: renderRaces,
     playoffs: function () { renderPlayoffs(); renderPower(); },
-    analytics: function () { renderAnalytics(); renderLuck(); renderAwards(); },
+    analytics: function () { renderAnalytics(); renderLuck(); },
     outlook: renderOutlook,
     matchups: function () { renderMatchups(); renderRecap(); renderPlayers(); },
-    alltime: function () { renderAlltime(); renderSeasons(); renderRecords(); },
-    profiles: renderProfiles
+    alltime: function () { renderAlltime(); renderProfiles(); renderSeasons(); renderRecords(); }
   };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
@@ -2187,7 +2210,7 @@
   var GROUPS = [
     ['standings', ['table', 'races', 'playoffs', 'analytics']],
     ['week', ['outlook', 'matchups']],
-    ['history', ['alltime', 'profiles']]
+    ['history', ['alltime']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {
@@ -2214,6 +2237,7 @@
       setTab(g[1].indexOf(tab) >= 0 ? tab : g[1][0]);
     });
   });
+  $('goduel').addEventListener('click', function () { raceStop(); RC.view = 'duel'; RC.t = 0; setTab('races'); });
   $('toggle').addEventListener('click', function () {
     showWeeks = !showWeeks;
     $('toggle').setAttribute('aria-pressed', String(showWeeks));

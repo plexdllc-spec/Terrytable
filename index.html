@@ -72,7 +72,6 @@
     <button role="tab" id="tab-outlook" aria-selected="false" data-tab="outlook">Outlook</button>
     <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
-    <button role="tab" id="tab-profiles" aria-selected="false" data-tab="profiles">Managers</button>
   </nav>
 
   <div id="sample" class="note" hidden>Example data. The league appears here once the first week is final.</div>
@@ -87,6 +86,7 @@
           <button class="btn" id="toggle" aria-pressed="false">Show weeks</button>
         </div>
       </div>
+      <div id="x-highlights"></div>
       <p class="meta" style="margin:8px 0 0">Top 6 make the playoffs. The gold line marks the cutoff. 1st and 2nd get a bye.</p>
       <div class="scroll std"><table id="t"></table></div>
       <div id="cards"></div>
@@ -125,11 +125,6 @@
         <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
         <div class="scroll"><table id="tl"></table></div>
       </div>
-      <div class="ablock">
-        <div class="ph">Awards</div>
-        <p class="cap">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
-        <div id="x-awards"></div>
-      </div>
     </section>
 
     <section id="p-matchups" hidden>
@@ -148,7 +143,12 @@
     </section>
 
     <section id="p-alltime" hidden>
+      <div class="meta" style="margin-bottom:10px"><button class="btn" id="goduel">Head-to-head duel</button></div>
       <div id="x-alltime"></div>
+      <div class="ablock">
+        <div class="ph">Managers</div>
+        <div id="x-profiles"></div>
+      </div>
       <div class="ablock">
         <div class="ph">Seasons</div>
         <div id="x-seasons"></div>
@@ -160,7 +160,6 @@
     </section>
 
     <section id="p-races" hidden><div id="x-races"></div></section>
-    <section id="p-profiles" hidden><div id="x-profiles"></div></section>
 
     <section id="p-outlook" hidden>
       <div id="x-outlook"></div>
