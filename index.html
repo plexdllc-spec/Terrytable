@@ -63,7 +63,6 @@
     <button role="tab" id="g-standings" aria-selected="true" data-group="standings">Standings</button>
     <button role="tab" id="g-week" aria-selected="false" data-group="week">This Week</button>
     <button role="tab" id="g-teams" aria-selected="false" data-group="teams">Teams</button>
-    <button role="tab" id="g-analytics" aria-selected="false" data-group="analytics">Analytics</button>
     <button role="tab" id="g-history" aria-selected="false" data-group="history">History</button>
   </nav>
   <nav id="subnav" role="tablist" aria-label="Subsections">
@@ -75,9 +74,6 @@
     <button role="tab" id="tab-power" aria-selected="false" data-tab="power">Power</button>
     <button role="tab" id="tab-players" aria-selected="false" data-tab="players">Players</button>
     <button role="tab" id="tab-analytics" aria-selected="false" data-tab="analytics">Analytics</button>
-    <button role="tab" id="tab-luck" aria-selected="false" data-tab="luck">Luck</button>
-    <button role="tab" id="tab-awards" aria-selected="false" data-tab="awards">Awards</button>
-    <button role="tab" id="tab-share" aria-selected="false" data-tab="share">Share</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
     <button role="tab" id="tab-profiles" aria-selected="false" data-tab="profiles">Managers</button>
     <button role="tab" id="tab-seasons" aria-selected="false" data-tab="seasons">Seasons</button>
@@ -125,6 +121,21 @@
         <p class="cap">Six measures scaled against the rest of the league, where the outer edge is best. Compare any two teams, or one team against the league average.</p>
         <div id="x-radar"></div>
       </div>
+      <div class="ablock">
+        <div class="ph">Luck</div>
+        <div class="meta" id="lmeta"></div>
+        <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
+        <div class="scroll"><table id="tl"></table></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Awards</div>
+        <p class="cap">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
+        <div id="x-awards"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Share cards</div>
+        <div id="x-share"></div>
+      </div>
     </section>
 
     <section id="p-matchups" hidden>
@@ -133,11 +144,7 @@
       <div class="bugs" id="bugs"></div>
     </section>
 
-    <section id="p-luck" hidden>
-      <div class="meta" id="lmeta"></div>
-      <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
-      <div class="scroll"><table id="tl"></table></div>
-    </section>
+
 
 
 
@@ -147,10 +154,7 @@
       <div id="x-players"></div>
     </section>
 
-    <section id="p-awards" hidden>
-      <p class="cap" style="margin-top:0">Lucky win is the lowest-scoring winner. Unlucky loss is the highest-scoring loser. Bust is the biggest miss against projection among starters projected at 10 or more.</p>
-      <div id="x-awards"></div>
-    </section>
+
 
 
     <section id="p-alltime" hidden>
@@ -160,7 +164,6 @@
     <section id="p-races" hidden><div id="x-races"></div></section>
     <section id="p-profiles" hidden><div id="x-profiles"></div></section>
     <section id="p-recap" hidden><div id="x-recap"></div></section>
-    <section id="p-share" hidden><div id="x-share"></div></section>
 
     <section id="p-records" hidden><div id="x-records"></div></section>
     <section id="p-seasons" hidden>

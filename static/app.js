@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'races', 'outlook', 'matchups', 'power', 'players', 'analytics', 'luck', 'awards', 'share', 'alltime', 'profiles', 'seasons', 'records', 'recap'];
+  var TABS = ['table', 'playoffs', 'races', 'outlook', 'matchups', 'power', 'players', 'analytics', 'alltime', 'profiles', 'seasons', 'records', 'recap'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -633,7 +633,7 @@
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['players', 'awards', 'outlook', 'power'];
+  var LUTABS = ['players', 'analytics', 'outlook', 'power'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -1922,8 +1922,8 @@
   }
 
   // ---- Tabs, view mode, status ----
-  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck,
-    players: renderPlayers, awards: renderAwards, alltime: renderAlltime, seasons: renderSeasons, profiles: renderProfiles, records: renderRecords, recap: renderRecap, share: renderShare, races: renderRaces };
+  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, outlook: renderOutlook, analytics: function () { renderAnalytics(); renderLuck(); renderAwards(); renderShare(); }, power: renderPower, matchups: renderMatchups,
+    players: renderPlayers, alltime: renderAlltime, seasons: renderSeasons, profiles: renderProfiles, records: renderRecords, recap: renderRecap, races: renderRaces };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
   var OPENSEC = {}, csecBusy = false, csecQueued = false;
@@ -2271,8 +2271,7 @@
   var GROUPS = [
     ['standings', ['table', 'playoffs', 'races']],
     ['week', ['outlook', 'matchups']],
-    ['teams', ['power', 'players']],
-    ['analytics', ['analytics', 'luck', 'awards', 'share']],
+    ['teams', ['power', 'players', 'analytics']],
     ['history', ['alltime', 'profiles', 'seasons', 'records', 'recap']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
