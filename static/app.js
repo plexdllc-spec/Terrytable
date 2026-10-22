@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'races', 'outlook', 'matchups', 'power', 'players', 'analytics', 'alltime', 'profiles', 'seasons', 'records', 'recap'];
+  var TABS = ['table', 'races', 'playoffs', 'analytics', 'outlook', 'matchups', 'alltime', 'profiles'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -633,7 +633,7 @@
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['players', 'analytics', 'outlook', 'power'];
+  var LUTABS = ['matchups', 'analytics', 'outlook', 'playoffs'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -1025,7 +1025,7 @@
   function gamesIn(rows) { return rows[0].w + rows[0].l; }
   function renderAlltime() {
     var host = $('x-alltime'); host.textContent = '';
-    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'alltime') renderAlltime(); }); return; }
+    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'alltime') RENDER.alltime(); }); return; }
     var years = histYears();
     if (!years.length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return; }
     var M = {}, champs = [], recs = [];
@@ -1063,7 +1063,7 @@
   }
   function renderSeasons() {
     var host = $('x-seasons'); host.textContent = '';
-    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'seasons') renderSeasons(); }); return; }
+    if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'alltime') RENDER.alltime(); }); return; }
     var years = histYears().reverse();
     if (!years.length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return; }
     if (!histSeason || !HIST[histSeason]) histSeason = years[0];
@@ -1531,7 +1531,7 @@
       var row = el('div', 'prizeitem'), pw = el('span', 'pw', it[0]); pw.style.minWidth = '8.2rem';
       row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); host.appendChild(row);
     });
-    if (!HW) { loadHW(function () { if (tab === 'recap') renderRecap(); }); }
+    if (!HW) { loadHW(function () { if (tab === 'matchups') RENDER.matchups(); }); }
     else if (Object.keys(HW).length) {
       var pool = [];
       Object.keys(HW).sort().forEach(function (y) { Object.keys(HW[y]).forEach(function (m) { HW[y][m].p.forEach(function (v, k) { pool.push({ v: v, k: y + ':' + m + ':' + (k + 1) }); }); }); });
@@ -1553,98 +1553,6 @@
     }
     sec(host, 'All games');
     put(host, [['Winner', 'l'], ['Score', ''], ['Loser', 'l'], ['Score', ''], ['Margin', '']], gs.map(function (g) { return [[T[g.w], 'l team'], [f2(g.ws), ''], [T[g.l], 'l'], [f2(g.ls), ''], [f2(g.ws - g.ls), '']]; }));
-  }
-
-  var shareSel = null, shareLine = '', shareMode = 'roast';
-  function trashLines(r, rows, mode) {
-    var N = rows.length, t = r.team, out = [];
-    var byAvg = rows.slice().sort(function (a, b) { return b.avg - a.avg; }), avgRank = byAvg.indexOf(r) + 1;
-    var gp = Object.keys(r.wk).length;
-    if (mode === 'roast') {
-      if (r.rank >= N - 2) out.push(t + ' sits ' + r.rank + 'th with ' + r.lp + ' league points. At this pace the playoffs are a rumor.');
-      if (avgRank === N) out.push(t + ' averages ' + f1(r.avg) + ' points, the lowest in the league. The waiver wire is open all week.');
-      if (r.luck > 0.7) out.push(t + ' has ' + f1(r.luck) + ' more wins than the scoring says it should. The schedule is doing the heavy lifting.');
-      if (r.luck < -0.7) out.push(t + ' is ' + f1(-r.luck) + ' wins below expectation. Bad schedule or bad timing, pick one.');
-      out.push('Low point so far for ' + t + ': ' + f1(r.lo) + '. Some teams score that in a half.');
-      if (r.sd > 22) out.push(t + ' swings by ' + f1(r.sd) + ' points a week. Every Sunday is a surprise, mostly the bad kind.');
-      if (r.rank <= 3) out.push(t + ' is #' + r.rank + ' for now. Enjoy the view, it is a long way down.');
-      out.push(t + ' has beaten ' + Math.round(r.apPct * 100) + '% of the league on average each week. The other ' + Math.round((1 - r.apPct) * 100) + '% is on the record.');
-    } else {
-      if (r.rank <= 3) out.push(t + ' is #' + r.rank + ' with ' + r.lp + ' league points. Clear a spot for the trophy.');
-      if (r.tops > 0) out.push(t + ' owns ' + r.tops + ' weekly top score' + (r.tops === 1 ? '' : 's') + ', worth $' + (PRIZE * r.tops) + '.');
-      if (avgRank <= 3) out.push(t + ' averages ' + f1(r.avg) + ' points, #' + avgRank + ' in the league. The scoreboard does not lie.');
-      if (r.apPct >= 0.6) out.push(t + ' beats ' + Math.round(r.apPct * 100) + '% of the league every week. Elite.');
-      out.push('Best week for ' + t + ': ' + f1(r.hi) + '. That is the ceiling and it is high.');
-      if (r.rank > 6) out.push(t + ' is ' + r.rank + 'th now, and the playoff line is closer than it looks. Nobody is out yet.');
-      out.push(t + ' has ' + r.lp + ' league points from ' + gp + ' weeks. Every week is 3 more on the table.');
-    }
-    return out;
-  }
-  function wrapText(c, text, x, y, maxW, lh) {
-    var words = text.split(' '), line = '', yy = y;
-    words.forEach(function (w) {
-      var test = line ? line + ' ' + w : w;
-      if (c.measureText(test).width > maxW && line) { c.fillText(line, x, yy); line = w; yy += lh; } else line = test;
-    });
-    if (line) { c.fillText(line, x, yy); yy += lh; }
-    return yy;
-  }
-  function drawCard(cv, r, rows, line, nextTxt) {
-    var W = 1080, H = 1080, c = cv.getContext('2d');
-    cv.width = W; cv.height = H;
-    var g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#2a0a14'); g.addColorStop(1, '#12060a');
-    c.fillStyle = g; c.fillRect(0, 0, W, H);
-    c.strokeStyle = 'rgba(214,52,98,0.25)'; c.lineWidth = 2;
-    for (var k = 0; k < 14; k++) { c.beginPath(); c.moveTo(0, 640 + k * 40 + k * k * 1.4); c.lineTo(W, 640 + k * 40 + k * k * 1.4); c.stroke(); }
-    c.fillStyle = '#f2b632'; c.fillRect(60, 60, 12, 120);
-    c.font = 'italic 800 64px "Barlow Condensed", Impact, sans-serif'; c.fillText("Terry's Table", 92, 118);
-    c.font = '600 28px Barlow, Arial, sans-serif'; c.fillStyle = '#c9a9b2'; c.fillText('The DEAN Association  |  Week ' + (Object.keys(r.wk).length), 94, 166);
-    c.fillStyle = '#ffffff'; c.font = 'italic 800 96px "Barlow Condensed", Impact, sans-serif';
-    var y = wrapText(c, r.team, 60, 300, 960, 100);
-    c.font = '600 32px Barlow, Arial, sans-serif'; c.fillStyle = '#f2b632'; c.fillText((MGR26[r.team] || '') + '', 62, y - 40);
-    var stats = [['RANK', '#' + r.rank], ['LEAGUE PTS', String(r.lp)], ['RECORD', r.w + '-' + r.l], ['AVG PTS', f1(r.avg)]];
-    stats.forEach(function (st, i) {
-      var x = 60 + i * 245;
-      c.fillStyle = 'rgba(155,28,63,0.45)'; c.fillRect(x, y + 10, 225, 150);
-      c.fillStyle = '#f2b632'; c.font = 'italic 800 72px "Barlow Condensed", Impact, sans-serif'; c.fillText(st[1], x + 18, y + 95);
-      c.fillStyle = '#c9a9b2'; c.font = '600 22px Barlow, Arial, sans-serif'; c.fillText(st[0], x + 18, y + 135);
-    });
-    c.fillStyle = '#ffffff'; c.font = '600 40px Barlow, Arial, sans-serif';
-    var yy = wrapText(c, line, 60, y + 250, 960, 54);
-    if (nextTxt) { c.fillStyle = '#c9a9b2'; c.font = '600 28px Barlow, Arial, sans-serif'; c.fillText(nextTxt, 60, 1010); }
-    c.fillStyle = '#f2b632'; c.font = '600 24px Barlow, Arial, sans-serif'; c.textAlign = 'right'; c.fillText('terrys-table.onrender.com', 1020, 1040); c.textAlign = 'left';
-  }
-  function renderShare() {
-    var host = $('x-share'); host.textContent = '';
-    var d = getData();
-    if (d.sample) { host.appendChild(el('p', 'cap', 'Share cards appear once real weeks are loaded.')); return; }
-    var rows = analyze(d);
-    var bar = el('div', 'pick'), lab = el('label', 'meta', 'Team'), sel = el('select');
-    var ord = rows.slice().sort(function (a, b) { return a.team < b.team ? -1 : 1; });
-    if (shareSel === null || !rows.some(function (r) { return r.i === shareSel; })) shareSel = ord[0].i;
-    ord.forEach(function (r) { var o = el('option', '', r.team); o.value = r.i; if (r.i === shareSel) o.selected = true; sel.appendChild(o); });
-    sel.addEventListener('change', function () { shareSel = parseInt(sel.value, 10); shareLine = ''; renderShare(); });
-    bar.appendChild(lab); bar.appendChild(sel); host.appendChild(bar);
-    var r = rows.filter(function (q) { return q.i === shareSel; })[0];
-    var btns = el('div', 'pick'); btns.style.marginTop = '10px';
-    function mk(txt, fn) { var b = el('button', 'btn', txt); b.addEventListener('click', fn); btns.appendChild(b); return b; }
-    mk('Roast', function () { shareMode = 'roast'; shareLine = ''; renderShare(); });
-    mk('Hype', function () { shareMode = 'hype'; shareLine = ''; renderShare(); });
-    mk('New line', function () { shareLine = ''; renderShare(); });
-    var lines = trashLines(r, rows, shareMode);
-    if (!shareLine || lines.indexOf(shareLine) < 0) shareLine = lines[Math.floor(Math.random() * lines.length)];
-    var nextTxt = '';
-    if (UP && UP.matchups) UP.matchups.forEach(function (m) {
-      var tn = d.teams;
-      if (m.a === r.i) nextTxt = 'Week ' + UP.week + ': vs ' + tn[m.b]; else if (m.b === r.i) nextTxt = 'Week ' + UP.week + ': vs ' + tn[m.a];
-    });
-    var cv = el('canvas', 'sharecv'); drawCard(cv, r, rows, shareLine, nextTxt);
-    mk('Download image', function () {
-      cv.toBlob(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = r.team.replace(/[^a-z0-9]+/gi, '-') + '.png'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000); });
-    });
-    host.appendChild(btns);
-    host.appendChild(el('p', 'cap', 'Lines are built from real standings and scoring. Roast and Hype swap the tone. New line picks another.'));
-    var wrap = el('div', 'chartbox'); wrap.appendChild(cv); host.appendChild(wrap);
   }
 
   function loadLU() {
@@ -1922,8 +1830,16 @@
   }
 
   // ---- Tabs, view mode, status ----
-  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, outlook: renderOutlook, analytics: function () { renderAnalytics(); renderLuck(); renderAwards(); renderShare(); }, power: renderPower, matchups: renderMatchups,
-    players: renderPlayers, alltime: renderAlltime, seasons: renderSeasons, profiles: renderProfiles, records: renderRecords, recap: renderRecap, races: renderRaces };
+  var RENDER = {
+    table: function () { renderTable(); },
+    races: renderRaces,
+    playoffs: function () { renderPlayoffs(); renderPower(); },
+    analytics: function () { renderAnalytics(); renderLuck(); renderAwards(); },
+    outlook: renderOutlook,
+    matchups: function () { renderMatchups(); renderRecap(); renderPlayers(); },
+    alltime: function () { renderAlltime(); renderSeasons(); renderRecords(); },
+    profiles: renderProfiles
+  };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
   var OPENSEC = {}, csecBusy = false, csecQueued = false;
@@ -1986,7 +1902,7 @@
   }
   function renderRecords() {
     var host = $('x-records'); host.textContent = '';
-    if (!HW) { host.appendChild(el('p', 'cap', 'Loading records...')); loadHW(function () { if (tab === 'records') renderRecords(); }); return; }
+    if (!HW) { host.appendChild(el('p', 'cap', 'Loading records...')); loadHW(function () { if (tab === 'alltime') RENDER.alltime(); }); return; }
     var ys = Object.keys(HW).sort();
     if (!ys.length) { host.appendChild(el('p', 'cap', 'No weekly history loaded yet.')); return; }
     var d = getData(), cur = d.sample ? [] : d.rows, games = [], M = {}, W = {}, i;
@@ -2269,10 +2185,9 @@
 
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'playoffs', 'races']],
+    ['standings', ['table', 'races', 'playoffs', 'analytics']],
     ['week', ['outlook', 'matchups']],
-    ['teams', ['power', 'players', 'analytics']],
-    ['history', ['alltime', 'profiles', 'seasons', 'records', 'recap']]
+    ['history', ['alltime', 'profiles']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {
