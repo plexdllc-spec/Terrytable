@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'playoffs', 'odds', 'outlook', 'analytics', 'power', 'matchups', 'luck', 'players', 'awards', 'news', 'alltime', 'seasons', 'profiles', 'records', 'recap', 'share', 'races'];
+  var TABS = ['table', 'playoffs', 'races', 'outlook', 'matchups', 'power', 'players', 'analytics', 'luck', 'awards', 'share', 'alltime', 'profiles', 'seasons', 'records', 'recap'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -633,7 +633,7 @@
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['players', 'awards', 'outlook', 'odds', 'power'];
+  var LUTABS = ['players', 'awards', 'outlook', 'power'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -939,62 +939,6 @@
     window.addEventListener('scroll', hide, true);
     document.addEventListener('click', hide);
   })();
-
-  function renderOdds() {
-    var host = $('x-odds'), x = luReady(host); if (!x) return;
-    var o = getOutlook(x), s = o.sim, d = x.d, ids = o.ids, cur = {};
-    d.rows.forEach(function (q) { cur[q.i] = q; });
-    var info = ids.map(function (i) {
-      var lp = s.lp[i].slice().sort(function (a, b) { return a - b; }), pr = 0, by = 0;
-      s.pos[i].forEach(function (c, k) { if (k < 6) pr += c; if (k < 2) by += c; });
-      return { i: i, team: d.teams[i], rank: cur[i].rank, now: cur[i].lp, med: pctile(lp, 0.5), lo: pctile(lp, 0.1), hi: pctile(lp, 0.9), po: pr / s.N, bye: by / s.N, sos: o.sos[i] };
-    });
-    info.sort(function (a, b) { return (b.po - a.po) || (b.med - a.med) || (a.rank - b.rank); });
-    var c6 = s.cut6.slice().sort(function (a, b) { return a - b; }), c2 = s.cut2.slice().sort(function (a, b) { return a - b; });
-    var m6 = pctile(c6, 0.5), m2 = pctile(c2, 0.5);
-    sec(host, 'Playoff and bye odds', true);
-    barList(host, info.map(function (r) { return { ti: r.i, t: r.team, sub: '#' + r.rank + ' · ' + r.now + ' LP · ends ' + r.med, v: r.po * 100, v2: r.bye * 100, txt: pctText(r.po), cls: r.po >= 0.9 ? 'pos' : (r.po <= 0.1 ? 'neg' : ''), med: r.med, rank: r.rank, sos: r.sos }; }),
-      { max: 100, key2: 'Bye odds', sorts: [['Playoffs', function (x, y) { return y.v - x.v || y.med - x.med; }], ['Bye', function (x, y) { return y.v2 - x.v2 || y.v - x.v; }], ['Rank now', function (x, y) { return x.rank - y.rank; }], ['Easy schedule', function (x, y) { return (x.sos === null ? 9 : x.sos) - (y.sos === null ? 9 : y.sos); }]] });
-    host.appendChild(el('p', 'cap', 'Schedule is the average strength of remaining opponents against the league average, in projected points. Plus means a tougher road, minus means an easier one.'));
-    sec(host, 'Path to the playoffs');
-    var left = WEEKS - s.start + 1, safe6 = pctile(c6, 0.9);
-    var curLP = {}; ids.forEach(function (i) { curLP[i] = cur[i].lp; });
-    var path = info.map(function (r) {
-      var mx = r.now + 3 * left, above = 0, reach = 0;
-      ids.forEach(function (j) { if (j === r.i) return; if (curLP[j] > mx) above++; if (curLP[j] + 3 * left >= r.now) reach++; });
-      var need = Math.max(0, m6 - r.now), pace = left ? need / left : 0, status, cls = '';
-      if (above >= 6) { status = 'Eliminated'; cls = 'neg'; }
-      else if (reach <= 5) { status = 'Clinched'; cls = 'pos'; }
-      else if (pace > 2.5 || r.po < 0.05) { status = 'Long shot'; cls = 'neg'; }
-      else if (r.po >= 0.9) { status = 'Strong'; cls = 'pos'; }
-      else status = 'In the race';
-      return [[r.team, 'l team'], [String(r.now), ''], [String(mx), ''], [status, cls], [String(m6), ''], [need > 0 ? String(need) : '0', ''],
-        [need > 0 ? f1(pace) : '0.0', pace > 2.5 ? 'neg' : ''], [String(safe6), '']];
-    });
-    put(host, [['Team', 'l'], ['LP', ''], ['Max', ''], ['Status', 'l'], ['Cutoff', ''], ['Need', ''], ['Per wk', ''], ['Safe', '']], path);
-    host.appendChild(el('p', 'cap', left + ' weeks left, 3 points possible per week. Max is today plus all remaining points. Cutoff is the median 6th place finish in the simulation, Need is the points still required to reach it, and Per wk is Need divided by weeks left (3.0 means winning and beating the average every week). Safe is the 90th percentile cutoff. Eliminated and Clinched are exact math, ignoring tiebreaks; Long shot means more than 2.5 per week or under 5% playoff odds.'));
-    sec(host, 'Where each team finishes (league points)');
-    var byMed = info.slice().sort(function (a, b) { return (b.med - a.med) || (b.po - a.po); });
-    var cb = el('div', 'chartbox'); cb.style.marginTop = '8px';
-    rangeChart(cb, byMed, m6, m2);
-    var lg = el('div', 'legend'); lg.appendChild(el('span', '', 'Bar is the middle 80% of outcomes. Filled dot is the median. Hollow dot is today. Dashed lines are the median 6th and 2nd place finish.'));
-    cb.appendChild(lg); host.appendChild(cb);
-    sec(host, 'Chance of each final rank');
-    var heads = [['Team', 'l c0']]; for (var k = 1; k <= info.length; k++) heads.push([String(k), '']);
-    var t = put(host, heads, info.map(function (r) {
-      var cells = [[r.team, 'l c0 team']];
-      s.pos[r.i].forEach(function (c) { var p = c / s.N; cells.push([p < 0.005 ? '' : String(Math.round(p * 100)), '']); });
-      return cells;
-    }));
-    info.forEach(function (r, ri) {
-      s.pos[r.i].forEach(function (c, ci) {
-        var p = c / s.N, cell = t.rows[ri + 1].cells[ci + 1];
-        if (p >= 0.005) cell.style.background = 'color-mix(in srgb, var(--gold) ' + Math.min(48, Math.round(p * 110)) + '%, var(--panel))';
-        if (ci === 5) cell.style.borderRight = '2px solid var(--gold)';
-      });
-    });
-    host.appendChild(el('p', 'cap', 'Cells are percent chance. The gold line marks the playoff cutoff after 6th place.'));
-  }
 
   function scatter(host, pts, sel) {
     var W = 480, Hh = 320, L = 44, R = 14, T = 14, B = 36, pw = W - L - R, ph = Hh - T - B, all = [];
@@ -1703,81 +1647,6 @@
     var wrap = el('div', 'chartbox'); wrap.appendChild(cv); host.appendChild(wrap);
   }
 
-  // ---- News: injuries and headlines for Week 5 starters ----
-  var NEWS = null, NEWSAT = 0;
-  function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim(); }
-  function ago(iso) {
-    var t = Date.parse(iso); if (!t) return '';
-    var m = Math.max(0, (Date.now() - t) / 60000);
-    if (m < 60) return Math.round(m) + 'm ago';
-    if (m < 1440) return Math.round(m / 60) + 'h ago';
-    return Math.round(m / 1440) + 'd ago';
-  }
-  function loadNews() {
-    if (Date.now() - NEWSAT < 300000 && NEWS) return;
-    NEWSAT = Date.now();
-    fetch('/api/news').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      NEWS = d || { articles: [], injuries: [] };
-      if (tab === 'news') renderNews();
-    }).catch(function () { NEWS = NEWS || { articles: [], injuries: [] }; if (tab === 'news') renderNews(); });
-  }
-  function renderNews() {
-    var host = $('x-news'); host.textContent = '';
-    loadNews();
-    if (!UP || !UP.lineups || !UP.matchups) { host.appendChild(el('p', 'cap', 'Upcoming week lineups are not loaded yet.')); return; }
-    var teams = state.teams, inj = {}, FEED = (NEWS && NEWS.injuries) || [];
-    FEED.forEach(function (i) { inj[normName(i.p)] = i; });
-    var YF = { O: 'Out', Q: 'Questionable', IR: 'Injured reserve', BYE: 'On bye' };
-    function review(ti) {
-      var out = [];
-      (UP.lineups[ti] || []).forEach(function (p) {
-        var e = inj[normName(p.p)], es = e ? String(e.s).toLowerCase() : '', ys = p.f || '';
-        var swap = ys === 'O' || ys === 'IR' || ys === 'BYE' || es === 'out' || es === 'injured reserve' || es === 'doubtful' || (!p.proj && !ys);
-        var q = !swap && (ys === 'Q' || es === 'questionable' || es === 'day-to-day');
-        if (!swap && !q) return;
-        var label = ys ? YF[ys] : (e ? e.s : 'Projected 0');
-        if (e && ys && String(e.s).toLowerCase() !== label.toLowerCase() && es !== 'out') label += ' (ESPN: ' + e.s + ')';
-        out.push({ p: p, swap: swap, label: label, detail: e ? ((e.w ? e.w + '. ' : '') + (e.x || '')) : '' });
-      });
-      out.sort(function (a, b) { return (b.swap ? 1 : 0) - (a.swap ? 1 : 0); });
-      return out;
-    }
-    var all = UP.matchups.map(function (m) { return { m: m, a: review(m.a), b: review(m.b) }; });
-    var swaps = [];
-    all.forEach(function (x) {
-      [[x.m.a, x.a], [x.m.b, x.b]].forEach(function (t) {
-        var n = t[1].filter(function (r) { return r.swap; });
-        if (n.length) swaps.push(teams[t[0]] + ': ' + n.map(function (r) { return r.p.p + ' (' + r.label.toLowerCase() + ')'; }).join(', '));
-      });
-    });
-    var cap = el('p', 'cap', 'Week ' + UP.week + ' starters only. Swap needed means out, on bye, injured reserve, doubtful or projected at 0. Status comes from the Yahoo lineup screens and, when available, the public ESPN injury report.' + (FEED.length ? '' : ' The ESPN feed is not available right now, so only Yahoo flags show.'));
-    cap.style.marginTop = '0'; host.appendChild(cap);
-    sec(host, 'Lineup swaps needed', true);
-    if (!swaps.length) host.appendChild(el('p', 'cap', 'No starter needs a swap right now.'));
-    swaps.forEach(function (t) { var b = el('div', 'prizeitem'); b.appendChild(el('span', 'pn', t)); host.appendChild(b); });
-    sec(host, 'By matchup');
-    all.forEach(function (x) {
-      var det = el('details', 'nteam'), sm = el('summary');
-      sm.appendChild(el('span', 'nt-n', teams[x.m.a] + ' vs ' + teams[x.m.b]));
-      var ns = x.a.concat(x.b).filter(function (r) { return r.swap; }).length, nq = x.a.concat(x.b).length - ns;
-      sm.appendChild(el('span', 'nt-c', ns + ' swap' + (ns === 1 ? '' : 's') + ', ' + nq + ' questionable'));
-      det.appendChild(sm);
-      var body = el('div', 'nt-b');
-      [[x.m.a, x.a], [x.m.b, x.b]].forEach(function (t) {
-        body.appendChild(el('div', 'ni-h', teams[t[0]]));
-        if (!t[1].length) body.appendChild(el('div', 'ni-t', 'All starters healthy and playing.'));
-        t[1].forEach(function (r) {
-          var row = el('div', 'ni');
-          row.appendChild(el('div', 'ni-h', r.p.p + ' (' + r.p.s + ', ' + r.p.t + ', proj ' + f1(r.p.proj) + ')'));
-          row.appendChild(el('div', r.swap ? 'ni-s neg' : 'ni-s', (r.swap ? 'Swap needed: ' : 'Watch: ') + r.label));
-          if (r.detail) row.appendChild(el('div', 'ni-t', r.detail));
-          body.appendChild(row);
-        });
-      });
-      det.appendChild(body); host.appendChild(det);
-    });
-  }
-
   function loadLU() {
     fetch('/api/lineups').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var sig = JSON.stringify(d && d.weeks || null);
@@ -1792,7 +1661,6 @@
       upSig = sig; OUT = null;
       UP = d && d.matchups && d.lineups ? d : null;
       showAsof();
-      if (tab === 'news') renderNews();
       if (LUTABS.indexOf(tab) >= 0) renderCurrent();
     }).catch(function () {});
   }
@@ -2054,8 +1922,8 @@
   }
 
   // ---- Tabs, view mode, status ----
-  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, odds: renderOdds, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck,
-    players: renderPlayers, awards: renderAwards, news: renderNews, alltime: renderAlltime, seasons: renderSeasons, profiles: renderProfiles, records: renderRecords, recap: renderRecap, share: renderShare, races: renderRaces };
+  var RENDER = { table: function () { renderTable(); }, playoffs: renderPlayoffs, outlook: renderOutlook, analytics: renderAnalytics, power: renderPower, matchups: renderMatchups, luck: renderLuck,
+    players: renderPlayers, awards: renderAwards, alltime: renderAlltime, seasons: renderSeasons, profiles: renderProfiles, records: renderRecords, recap: renderRecap, share: renderShare, races: renderRaces };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
   var OPENSEC = {}, csecBusy = false, csecQueued = false;
@@ -2401,11 +2269,11 @@
 
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'playoffs', 'odds']],
-    ['week', ['outlook', 'matchups', 'recap', 'news']],
-    ['teams', ['power', 'analytics', 'players', 'races']],
-    ['fun', ['luck', 'awards', 'share']],
-    ['history', ['alltime', 'profiles', 'seasons', 'records']]
+    ['standings', ['table', 'playoffs', 'races']],
+    ['week', ['outlook', 'matchups']],
+    ['teams', ['power', 'players']],
+    ['analytics', ['analytics', 'luck', 'awards', 'share']],
+    ['history', ['alltime', 'profiles', 'seasons', 'records', 'recap']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }
   function setTab(t) {
