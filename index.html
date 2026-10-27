@@ -69,7 +69,6 @@
     <button role="tab" id="tab-races" aria-selected="false" data-tab="races">Races</button>
     <button role="tab" id="tab-playoffs" aria-selected="false" data-tab="playoffs">Playoff picture</button>
     <button role="tab" id="tab-analytics" aria-selected="false" data-tab="analytics">Analytics</button>
-    <button role="tab" id="tab-outlook" aria-selected="false" data-tab="outlook">Outlook</button>
     <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
   </nav>
@@ -106,7 +105,7 @@
       <div class="meta" id="ameta"></div>
       <div class="ablock">
         <div class="ph">Rank race</div>
-        <p class="cap">Where every team stood after each week. Hover or tap a team to follow it. Gold is a first-round bye, garnet is in playoff position, grey is outside. The dashed line is the cutoff.</p>
+        <p class="cap">Every team's rank after each week. Press Play or drag the slider to run the race. Hover or tap a team to follow it. Gold is a first-round bye, garnet is in playoff position, grey is outside. The dashed line is the cutoff.</p>
         <div class="scroll pad"><div id="x-bump"></div></div>
       </div>
       <div class="ablock">
@@ -150,6 +149,10 @@
         <div id="x-profiles"></div>
       </div>
       <div class="ablock">
+        <div class="ph">Baseball cards</div>
+        <div id="x-cards"></div>
+      </div>
+      <div class="ablock">
         <div class="ph">Seasons</div>
         <div id="x-seasons"></div>
       </div>
@@ -160,10 +163,6 @@
     </section>
 
     <section id="p-races" hidden><div id="x-races"></div></section>
-
-    <section id="p-outlook" hidden>
-      <div id="x-outlook"></div>
-    </section>
 
   </main>
 </div>

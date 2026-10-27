@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'races', 'playoffs', 'analytics', 'outlook', 'matchups', 'alltime'];
+  var TABS = ['table', 'races', 'playoffs', 'analytics', 'matchups', 'alltime'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -632,7 +632,7 @@
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['table', 'matchups', 'analytics', 'outlook', 'playoffs'];
+  var LUTABS = ['table', 'matchups', 'analytics', 'playoffs'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -772,58 +772,6 @@
     }
     o.ids.forEach(function (i) { o.sos[i] = opp[i].length ? mean(opp[i]) - lgMu : null; });
     return o;
-  }
-
-  function renderOutlook() {
-    var host = $('x-outlook'), x = luReady(host); if (!x) return;
-    var o = getOutlook(x), d = x.d, ids = o.ids;
-    if (!o.up) { host.appendChild(el('p', 'cap', 'The upcoming week data is out of date. Send the next week preview to refresh it.')); return; }
-    var up = o.up, sg = o.fm.sigma, sm = sg * Math.SQRT2, T = ids.length;
-    var fbar = mean(ids.map(function (i) { return o.f5[i]; }));
-    var bt = o.bt;
-    function ml(p) {
-      p = Math.min(0.97, Math.max(0.03, p * 1.0476));
-      var v = p >= 0.5 ? -100 * p / (1 - p) : 100 * (1 - p) / p;
-      v = Math.round(v / 5) * 5;
-      if (v > -100 && v < 100) v = v < 0 ? -100 : 100;
-      return (v > 0 ? '+' : '') + v;
-    }
-    var box = el('div', 'mugrid');
-    function soFar(i) { var now = 0, left = 0; (up.lineups[i] || []).forEach(function (p) { if (p.act !== undefined) now += p.act; else left += p.proj >= 1 ? p.proj : REPL; }); return { now: now, left: left }; }
-    up.matchups.forEach(function (m, mi) {
-      var a = m.a, b = m.b, fa = o.f5[a], fb = o.f5[b], dn = o.fill[a].rem + o.fill[b].rem === 0, pa = dn ? (fa > fb ? 1 : (fa < fb ? 0 : 0.5)) : phi((fa - fb) / (sg * Math.sqrt(o.fill[a].rem + o.fill[b].rem)));
-      var elp = function (i, p) { return 2 * p + phi((o.f5[i] - fbar) / (sg * Math.sqrt((T - 1) / T))); };
-      var c = el('div', 'mu');
-      var sp = Math.round(Math.abs(fa - fb) * 2) / 2, favA = fa >= fb;
-      var spA = sp === 0 ? 'PK' : (favA ? '-' : '+') + sp.toFixed(1), spB = sp === 0 ? 'PK' : (favA ? '+' : '-') + sp.toFixed(1);
-      [[a, spA, ml(pa), favA, 'Exp ' + f1(elp(a, pa)) + ' LP'], [b, spB, ml(1 - pa), !favA, 'Exp ' + f1(elp(b, 1 - pa)) + ' LP']].forEach(function (z, k) {
-        var r = el('div', 'bk' + (k ? ' b' : '')), nm = el('div', 'tn tl', d.teams[z[0]]);
-        nm.appendChild(el('small', '', f1(o.f5[z[0]]) + ' proj' + (up.tot && up.tot[z[0]] ? ' | ' + f1(up.tot[z[0]][0]) + ' so far' : '')));
-        var c1 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? (z[3] ? 'WIN' : 'LOSS') : z[1]); c1.appendChild(el('small', '', dn ? 'Final' : 'Spread'));
-        var c2 = el('div', 'chipn ' + (z[3] ? 'fav' : 'dog'), dn ? f1(o.f5[z[0]]) : z[2]); c2.appendChild(el('small', '', dn ? 'Points' : 'Money'));
-        r.appendChild(nm); r.appendChild(c1); r.appendChild(c2); c.appendChild(r);
-      });
-      var sa = soFar(a), sb = soFar(b);
-      if (sa.now + sb.now > 0) c.appendChild(el('div', 'mu-n', dn ? d.teams[fa > fb ? a : b] + ' won by ' + f1(Math.abs(fa - fb)) : f1(sa.now) + ' to ' + f1(sb.now) + ' so far. Still to play: ' + f1(sa.left) + ' vs ' + f1(sb.left) + '.'));
-      var bar = el('div', 'wp'), seg = el('i'); seg.style.width = '0%'; bar.appendChild(seg); c.appendChild(bar);
-      if (ANIM) onView(bar, function () { seg.style.transition = 'width .9s cubic-bezier(.2,.8,.2,1)'; seg.style.width = (pa * 100).toFixed(1) + '%'; }); else seg.style.width = (pa * 100).toFixed(1) + '%';
-      [a, b].forEach(function (i) {
-        if (o.fill[i] && o.fill[i].holes) c.appendChild(el('div', 'mu-n', d.teams[i] + ': ' + o.fill[i].holes + ' empty slot' + (o.fill[i].holes > 1 ? 's' : '') + ' filled at ' + REPL));
-      });
-      box.appendChild(c);
-    });
-    host.appendChild(box);
-    sec(host, 'Lineup watch');
-    var watch = [];
-    ids.forEach(function (i) {
-      (up.tot && up.tot[i] ? [] : (up.lineups[i] || [])).forEach(function (p) {
-        if (p.act === undefined && (p.f || p.proj < 1)) watch.push({ team: d.teams[i], p: p, rk: (p.f === 'BYE' || p.f === 'O' || p.f === 'IR' || p.proj < 1) ? 0 : 1 });
-      });
-    });
-    watch.sort(function (a, b) { return a.rk - b.rk; });
-    host.appendChild(el('p', 'cap', 'O is out, Q is questionable, IR is injured reserve, BYE is off this week. Starters at 0 projected will likely be swapped before kickoff.'));
-    put(host, [['Team', 'l c0'], ['Player', 'l'], ['Slot', ''], ['Status', ''], ['Yahoo Proj', '']],
-      watch.map(function (w) { return [[w.team, 'l c0 team'], [w.p.p, 'l'], [w.p.s, ''], [w.p.f || 'Zero proj', w.rk ? '' : 'neg'], [f2(w.p.proj), '']]; }));
   }
 
   function rangeChart(host, info, cut6, cut2) {
@@ -1619,63 +1567,238 @@
     return hist;
   }
 
-  var pinnedTeam = null;
+  // ---- Rank race: animated bump chart with a week scrubber ----
+  var pinnedTeam = null, raceK = null, raceTimer = null, racePlayed = false;
+  function bumpStop() { if (raceTimer) { clearInterval(raceTimer); raceTimer = null; } }
   function renderBump(host, d) {
+    bumpStop();
     host.textContent = '';
     var hist = rankHistory(d), n = d.keys.length, rows = d.rows, R = rows.length;
-    var W = 860, L = 44, RT = 270, T = 34, B = 22, step = 34, pw = W - L - RT, H = T + (R - 1) * step + B;
+    if (raceK === null || raceK >= n) raceK = n - 1;
+    var W = 860, L = 44, RT = 250, T = 34, B = 22, step = 34, pw = W - L - RT, H = T + (R - 1) * step + B;
     var x = function (k) { return L + (n === 1 ? pw / 2 : k * pw / (n - 1)); };
     var y = function (rk) { return T + (rk - 1) * step; };
+
+    var ctl = el('div', 'race-ctl');
+    var play = el('button', 'btn race-play', 'Play');
+    play.type = 'button';
+    var range = document.createElement('input');
+    range.type = 'range'; range.min = '0'; range.max = String(n - 1); range.step = '1';
+    range.className = 'race-range'; range.setAttribute('aria-label', 'Week shown');
+    var lbl = el('span', 'race-lbl');
+    ctl.appendChild(play); ctl.appendChild(range); ctl.appendChild(lbl);
+    host.appendChild(ctl);
+
     var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'bump', role: 'group', 'aria-label': 'Rank by week for every team' });
+    host.appendChild(svg);
     for (var rk = 1; rk <= R; rk++) {
       svg.appendChild(sv('line', { x1: L, x2: W - RT + 12, y1: y(rk), y2: y(rk), 'class': 'guide' }));
       svg.appendChild(sv('text', { x: L - 22, y: y(rk) + 4, 'class': 'rk-l' }, String(rk)));
     }
     svg.appendChild(sv('line', { x1: L - 6, x2: W - RT + 12, y1: y(6.5), y2: y(6.5), 'class': 'cutl' }));
     d.keys.forEach(function (wk, k) { svg.appendChild(sv('text', { x: x(k), y: T - 16, 'class': 'wk-l' }, 'Wk ' + wk)); });
-    var order = rows.slice().sort(function (a, b) { return hist[a.i][n - 1] - hist[b.i][n - 1]; });
-    var groups = [];
-    function highlight(i) {
-      var on = i !== null && i !== undefined;
-      svg.classList.toggle('has-sel', on);
-      groups.forEach(function (g) { g.classList.toggle('on', on && g.getAttribute('data-i') === String(i)); });
-    }
-    order.forEach(function (r, idx) {
-      var final = hist[r.i][n - 1];
-      var g = sv('g', { 'class': 'bl ' + (final <= 2 ? 't-top' : (final <= 6 ? 't-in' : 't-out')), 'data-i': String(r.i), tabindex: '0', role: 'button', 'aria-label': r.team + ', rank ' + final });
-      g.style.setProperty('--d', (idx * 0.08).toFixed(2) + 's');
-      var pts = hist[r.i].map(function (rkk, k) { return [x(k), y(rkk)]; });
-      if (n > 1) {
-        var dstr = 'M' + pts[0][0] + ',' + pts[0][1];
-        for (var k = 1; k < pts.length; k++) {
-          var mx = (pts[k - 1][0] + pts[k][0]) / 2;
-          dstr += ' C' + mx + ',' + pts[k - 1][1] + ' ' + mx + ',' + pts[k][1] + ' ' + pts[k][0] + ',' + pts[k][1];
-        }
-        g.appendChild(sv('path', { d: dstr, pathLength: '1' }));
-      }
-      pts.forEach(function (pt, k) {
-        var dg = sv('g', { 'class': 'dt' });
-        dg.style.setProperty('--k', String(k));
-        dg.appendChild(sv('circle', { cx: pt[0], cy: pt[1], r: 10 }));
-        dg.appendChild(sv('text', { x: pt[0], y: pt[1] }, String(hist[r.i][k])));
-        g.appendChild(dg);
-      });
-      g.appendChild(sv('text', { x: x(n - 1) + 20, y: y(final) + 5, 'class': 'nm' }, r.team));
-      g.addEventListener('mouseenter', function () { highlight(r.i); });
-      g.addEventListener('mouseleave', function () { highlight(pinnedTeam); });
-      g.addEventListener('focus', function () { highlight(r.i); });
-      g.addEventListener('blur', function () { highlight(pinnedTeam); });
-      function pin() { pinnedTeam = pinnedTeam === r.i ? null : r.i; highlight(pinnedTeam === null ? r.i : pinnedTeam); }
+
+    var layer = sv('g', {}); svg.appendChild(layer);
+    var hot = pinnedTeam;
+    var groups = rows.map(function (r) {
+      var g = sv('g', { 'class': 'bl', 'data-i': String(r.i), tabindex: '0', role: 'button', 'aria-label': r.team });
+      var pth = sv('path', {}), dts = sv('g', { 'class': 'dts' }), tag = sv('g', { 'class': 'tag' });
+      tag.appendChild(sv('text', { x: 0, y: 5, 'class': 'nm' }, r.team));
+      g.appendChild(pth); g.appendChild(dts); g.appendChild(tag);
+      layer.appendChild(g);
+      var G = { i: r.i, g: g, path: pth, dts: dts, tag: tag };
+      function setHot(i) { hot = i; svg.classList.toggle('has-sel', i !== null && i !== undefined); draw(raceK); }
+      g.addEventListener('mouseenter', function () { setHot(r.i); });
+      g.addEventListener('mouseleave', function () { setHot(pinnedTeam); });
+      g.addEventListener('focus', function () { setHot(r.i); });
+      g.addEventListener('blur', function () { setHot(pinnedTeam); });
+      function pin() { pinnedTeam = pinnedTeam === r.i ? null : r.i; setHot(pinnedTeam); }
       g.addEventListener('click', pin);
       g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pin(); } });
-      groups.push(g);
-      svg.appendChild(g);
+      return G;
     });
-    host.appendChild(svg);
-    if (pinnedTeam !== null) highlight(pinnedTeam);
-    if (ANIM) { svg.classList.add('pre'); onView(svg, function () { svg.classList.remove('pre'); svg.classList.add('build'); }); }
+
+    function draw(k) {
+      raceK = k;
+      range.value = String(k);
+      lbl.textContent = 'After week ' + d.keys[k];
+      var on = hot !== null && hot !== undefined;
+      svg.classList.toggle('has-sel', on);
+      groups.forEach(function (G) {
+        var rr = hist[G.i], rkNow = rr[k];
+        G.g.setAttribute('class', 'bl ' + (rkNow <= 2 ? 't-top' : (rkNow <= 6 ? 't-in' : 't-out')) + (on && hot === G.i ? ' on' : ''));
+        var pts = [];
+        for (var j = 0; j <= k; j++) pts.push([x(j), y(rr[j])]);
+        var dstr = '';
+        if (pts.length > 1) {
+          dstr = 'M' + pts[0][0] + ',' + pts[0][1];
+          for (var q = 1; q < pts.length; q++) {
+            var mx = (pts[q - 1][0] + pts[q][0]) / 2;
+            dstr += ' C' + mx + ',' + pts[q - 1][1] + ' ' + mx + ',' + pts[q][1] + ' ' + pts[q][0] + ',' + pts[q][1];
+          }
+        }
+        G.path.setAttribute('d', dstr);
+        G.dts.textContent = '';
+        pts.forEach(function (pt, jj) {
+          var dg = sv('g', { 'class': 'dt' });
+          dg.appendChild(sv('circle', { cx: pt[0], cy: pt[1], r: jj === k ? 11 : 8 }));
+          dg.appendChild(sv('text', { x: pt[0], y: pt[1] }, String(rr[jj])));
+          G.dts.appendChild(dg);
+        });
+        G.tag.style.transform = 'translate(' + (x(k) + 18).toFixed(1) + 'px,' + y(rkNow).toFixed(1) + 'px)';
+      });
+    }
+
+    function stepPlay() {
+      if (raceK >= n - 1) { bumpStop(); play.textContent = 'Replay'; return; }
+      draw(raceK + 1);
+    }
+    function startPlay() {
+      if (raceTimer) return;
+      if (raceK >= n - 1) draw(0);
+      play.textContent = 'Pause';
+      raceTimer = setInterval(stepPlay, 800);
+    }
+    play.addEventListener('click', function () {
+      if (raceTimer) { bumpStop(); play.textContent = 'Play'; } else startPlay();
+    });
+    range.addEventListener('input', function () {
+      bumpStop(); play.textContent = 'Play';
+      draw(parseInt(range.value, 10));
+    });
+
+    draw(raceK);
+    if (ANIM && !racePlayed) {
+      racePlayed = true;
+      draw(0);
+      onView(svg, startPlay);
+    }
   }
 
+  // ---- Baseball cards: one per manager, drawn on canvas so the PNG is the card ----
+  var CW = 750, CH = 1050;
+  function fitText(g, text, x, yy, maxW) {
+    var f = g.font, size = parseInt(/(\d+)px/.exec(f)[1], 10);
+    while (g.measureText(text).width > maxW && size > 14) { size -= 2; g.font = f.replace(/\d+px/, size + 'px'); }
+    g.fillText(text, x, yy);
+  }
+  function initials(name) {
+    var p = name.split(/[\s_\-]+/).filter(Boolean);
+    return (p.length >= 2 ? p[0][0] + p[1][0] : name.slice(0, 2)).toUpperCase();
+  }
+  function cardRows() {
+    var d = getData();
+    if (d.sample) return null;
+    var rows = analyze(d), lx = luReady(document.createElement('div')), o = null, all = [];
+    if (lx) { try { o = getOutlook(lx); all = starters(lx); } catch (e) { o = null; } }
+    var recs = histRecs();
+    return rows.filter(function (r) { return MGR26[r.team]; }).map(function (r) {
+      var mgr = MGR26[r.team], best = null;
+      d.keys.forEach(function (wk) { var s = r.wk[wk].pts; if (!best || s > best.pts) best = { pts: s, wk: wk }; });
+      var by = {};
+      all.filter(function (p) { return p.t === r.i; }).forEach(function (p) { by[p.name] = (by[p.name] || 0) + p.pts; });
+      var star = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })[0];
+      var odds = null;
+      if (o && o.sim) { var c = 0, N = o.sim.N, arr = o.sim.inP[r.i]; for (var s = 0; s < N; s++) c += arr[s]; odds = c / N; }
+      var mine = recs.filter(function (q) { return q.r.mgr === mgr; }), w = 0, l = 0;
+      mine.forEach(function (q) { w += q.r.w; l += q.r.l; });
+      return {
+        mgr: mgr, team: r.team, rank: r.rank, w: r.w, l: r.l, lp: r.lp, pf: r.pts, best: best,
+        star: star ? { name: star, pts: by[star] } : null, odds: odds,
+        titles: mine.filter(function (q) { return q.r.r === 1; }).length,
+        career: (w + l) ? w / (w + l) : null
+      };
+    });
+  }
+  function drawCard(cv, k, wk) {
+    var g = cv.getContext('2d'), INK = '#2a1b12', CREAM = '#f4ebd3', RED = '#9c2b20', MUTE = '#6b5844';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = CREAM; g.fillRect(0, 0, CW, CH);
+    g.fillStyle = 'rgba(120,90,50,0.06)';
+    for (var s = 0; s < 600; s++) g.fillRect((s * 97) % CW, (s * 151) % CH, 2, 2);
+    g.strokeStyle = INK; g.lineWidth = 16; g.strokeRect(24, 24, CW - 48, CH - 48);
+    g.lineWidth = 3; g.strokeRect(50, 50, CW - 100, CH - 100);
+    g.fillStyle = RED; g.fillRect(70, 70, CW - 140, 78);
+    g.fillStyle = CREAM; g.font = 'bold 30px Georgia, "Times New Roman", serif';
+    g.fillText('THE DEAN ASSOCIATION  ·  2026', CW / 2, 110);
+    g.fillStyle = INK; g.font = 'bold 84px Impact, "Arial Narrow", "Arial Black", sans-serif';
+    fitText(g, k.mgr.toUpperCase(), CW / 2, 226, CW - 160);
+    g.fillStyle = MUTE; g.font = 'italic 32px Georgia, "Times New Roman", serif';
+    fitText(g, k.team, CW / 2, 272, CW - 160);
+    var fx = 150, fy = 300, fw = CW - 300, fh = 300;
+    var gr = g.createLinearGradient(0, fy, 0, fy + fh); gr.addColorStop(0, '#d8c79c'); gr.addColorStop(1, '#a8906a');
+    g.fillStyle = gr; g.fillRect(fx, fy, fw, fh);
+    g.strokeStyle = INK; g.lineWidth = 6; g.strokeRect(fx, fy, fw, fh);
+    g.fillStyle = CREAM; g.font = 'bold 200px Georgia, "Times New Roman", serif';
+    g.fillText(initials(k.mgr), CW / 2, fy + fh / 2 + 10);
+    g.fillStyle = INK; g.font = 'bold 26px Georgia, "Times New Roman", serif';
+    fitText(g, k.star ? 'SIGNATURE: ' + k.star.name.toUpperCase() + '  ·  ' + f1(k.star.pts) + ' PTS' : 'SIGNATURE: —', CW / 2, 636, CW - 160);
+    var cells = [
+      ['RECORD', k.w + '-' + k.l], ['LEAGUE PTS', String(k.lp)],
+      ['RANK', '#' + k.rank], ['POINTS FOR', f1(k.pf)],
+      ['BEST WEEK', k.best ? f1(k.best.pts) + '  (WK ' + k.best.wk + ')' : '—'], ['PLAYOFF ODDS', k.odds !== null ? Math.round(k.odds * 100) + '%' : '—'],
+      ['TITLES', String(k.titles)], ['CAREER W%', k.career !== null ? (k.career * 100).toFixed(1) + '%' : '—']
+    ];
+    var x0 = 110, colW = (CW - 220) / 2, y0 = 664, rowH = 74;
+    cells.forEach(function (c, idx) {
+      var col = idx % 2, row = Math.floor(idx / 2);
+      var cx = x0 + colW * col + colW / 2, cy = y0 + rowH * row;
+      g.fillStyle = MUTE; g.font = 'bold 20px Georgia, "Times New Roman", serif';
+      g.fillText(c[0], cx, cy + 8);
+      g.fillStyle = INK; g.font = 'bold 42px Impact, "Arial Narrow", sans-serif';
+      fitText(g, c[1], cx, cy + 46, colW - 20);
+    });
+    g.strokeStyle = 'rgba(42,27,18,0.35)'; g.lineWidth = 2;
+    for (var rr = 1; rr < 4; rr++) { g.beginPath(); g.moveTo(110, y0 + rowH * rr - 5); g.lineTo(CW - 110, y0 + rowH * rr - 5); g.stroke(); }
+    g.fillStyle = MUTE; g.font = 'italic 22px Georgia, "Times New Roman", serif';
+    g.fillText('Through week ' + wk + '  ·  Terry’s Table', CW / 2, CH - 66);
+  }
+  function renderCards() {
+    var host = $('x-cards'); if (!host) return;
+    host.textContent = '';
+    var data = null;
+    try { data = cardRows(); } catch (e) { data = null; }
+    if (!data || !data.length) { host.appendChild(el('p', 'cap', 'Cards appear once real weeks are loaded.')); return; }
+    var wk = getData().keys.slice(-1)[0];
+    host.appendChild(el('p', 'cap keep', 'One card per manager. Download saves a PNG for the group chat. Share opens your share sheet where the browser supports it.'));
+    var canShare = false;
+    try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob([''], { type: 'image/png' })], 'c.png', { type: 'image/png' })] })); } catch (e) { canShare = false; }
+    var grid = el('div', 'cards-grid');
+    data.forEach(function (k) {
+      var box = el('div', 'bcard');
+      var cv = document.createElement('canvas');
+      cv.width = CW; cv.height = CH; cv.className = 'bcard-cv';
+      cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', k.mgr + ' baseball card');
+      drawCard(cv, k, wk);
+      box.appendChild(cv);
+      var name = 'terrystable-' + k.mgr.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-wk' + wk + '.png';
+      var btns = el('div', 'bcard-btns');
+      var dl = el('button', 'btn', 'Download PNG'); dl.type = 'button';
+      dl.addEventListener('click', function () {
+        cv.toBlob(function (b) {
+          if (!b) return;
+          var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+          document.body.appendChild(a); a.click();
+          setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        }, 'image/png');
+      });
+      btns.appendChild(dl);
+      if (canShare) {
+        var sh = el('button', 'btn', 'Share'); sh.type = 'button';
+        sh.addEventListener('click', function () {
+          cv.toBlob(function (b) {
+            if (!b) return;
+            var f = new File([b], name, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: k.mgr }).catch(function () {});
+          }, 'image/png');
+        });
+        btns.appendChild(sh);
+      }
+      box.appendChild(btns);
+      grid.appendChild(box);
+    });
+    host.appendChild(grid);
+  }
   function heatColor(t) {
     var stops = [[58, 18, 32], [207, 44, 91], [242, 182, 50]], k = t < 0.5 ? 0 : 1, u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
     return 'rgb(' + [0, 1, 2].map(function (c) { return Math.round(stops[k][c] + (stops[k + 1][c] - stops[k][c]) * u); }).join(',') + ')';
@@ -1859,9 +1982,8 @@
     races: renderRaces,
     playoffs: function () { renderPlayoffs(); renderPower(); },
     analytics: function () { renderAnalytics(); renderLuck(); },
-    outlook: renderOutlook,
     matchups: function () { renderMatchups(); renderRecap(); renderPlayers(); },
-    alltime: function () { renderAlltime(); renderProfiles(); renderSeasons(); renderRecords(); }
+    alltime: function () { renderAlltime(); renderProfiles(); renderCards(); renderSeasons(); renderRecords(); }
   };
 
   // ---- Collapsible sections: every .ph heading folds the content under it ----
@@ -2209,7 +2331,7 @@
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
     ['standings', ['table', 'races', 'playoffs', 'analytics']],
-    ['week', ['outlook', 'matchups']],
+    ['week', ['matchups']],
     ['history', ['alltime']]
   ];
   function groupOf(t) { for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(t) >= 0) return GROUPS[i]; return GROUPS[0]; }

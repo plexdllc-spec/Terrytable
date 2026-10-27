@@ -10,7 +10,7 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8099"
 EXPECTED_GROUPS = ["Standings", "This Week", "History"]
 EXPECTED_TABS = {
     "standings": ["table", "races", "playoffs", "analytics"],
-    "week": ["outlook", "matchups"],
+    "week": ["matchups"],
     "history": ["alltime"],
 }
 
