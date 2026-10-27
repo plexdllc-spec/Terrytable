@@ -976,7 +976,7 @@
     if (!HIST) { host.appendChild(el('p', 'cap', 'Loading history...')); loadHist(function () { if (tab === 'alltime') RENDER.alltime(); }); return; }
     var years = histYears();
     if (!years.length) { host.appendChild(el('p', 'cap', 'No past seasons loaded yet.')); return; }
-    var M = {}, champs = [], recs = [];
+    var M = {}, recs = [];
     years.forEach(function (y) {
       var rows = HIST[y], g = gamesIn(rows);
       rows.forEach(function (r) {
@@ -986,7 +986,6 @@
         m.s++; m.w += r.w; m.l += r.l; m.pf += r.pf; m.g += r.w + r.l; m.fin += r.r; m.best = Math.min(m.best, r.r);
         if (r.r === 1) m.t1++; if (r.r === 2) m.t2++; if (r.r === 3) m.t3++; if (r.r <= 6) m.po++;
       });
-      champs.push({ y: y, c: rows[0], s: rows[1] });
     });
     var list = Object.keys(M).map(function (k) { return M[k]; });
     list.sort(function (a, b) { return (b.t1 - a.t1) || (b.t2 - a.t2) || ((b.w / (b.w + b.l)) - (a.w / (a.w + a.l))); });
@@ -996,18 +995,13 @@
         return [[String(k + 1), 'c1'], [m.n, 'l c2 team'], [String(m.t1), m.t1 ? 'pos' : ''], [String(m.t2), ''], [String(m.t3), ''], [m.po + '/' + m.s, ''], [String(m.s), ''],
           [m.w + '-' + m.l, ''], [(100 * m.w / (m.w + m.l)).toFixed(1) + '%', ''], [f1(m.pf / m.g), ''], [f1(m.fin / m.s), ''], [m.best === 1 ? 'Champ' : String(m.best), '']];
       }));
-    sec(host, 'Champions');
-    put(host, [['Year', ''], ['Champion', 'l'], ['Manager', 'l'], ['Runner-up', 'l']],
-      champs.slice().reverse().map(function (c) { return [[c.y, ''], [c.c.team, 'l team'], [c.c.mgr, 'l'], [c.s.team + ' (' + c.s.mgr + ')', 'l']]; }));
     function top(title, key, dir, fmt) {
       var a = recs.slice().sort(function (p, q) { return dir * (key(q) - key(p)); }).slice(0, 5);
       sec(host, title);
       put(host, [['Year', ''], ['Team', 'l'], ['Manager', 'l'], ['Value', '']], a.map(function (x) { return [[x.y, ''], [x.r.team, 'l team'], [x.r.mgr, 'l'], [fmt(x), '']]; }));
     }
     top('Most points in a season (per game)', function (x) { return x.r.pf / x.g; }, 1, function (x) { return f1(x.r.pf / x.g) + ' (' + f1(x.r.pf) + ' total)'; });
-    top('Fewest points in a season (per game)', function (x) { return x.r.pf / x.g; }, -1, function (x) { return f1(x.r.pf / x.g) + ' (' + f1(x.r.pf) + ' total)'; });
     top('Best regular season records', function (x) { return x.r.w / x.g; }, 1, function (x) { return x.r.w + '-' + x.r.l + ' (finished ' + x.r.r + ')'; });
-    top('Most points against (unluckiest schedule)', function (x) { return x.r.pa / x.g; }, 1, function (x) { return f1(x.r.pa / x.g) + ' per game, ' + x.r.w + '-' + x.r.l; });
   }
   function renderSeasons() {
     var host = $('x-seasons'); host.textContent = '';
@@ -1444,10 +1438,6 @@
     sec(host, 'Finish by season');
     var cb = el('div', 'chartbox'); profChart(cb, years, series, profSel);
     var lg = el('div', 'legend'); lg.appendChild(el('span', '', 'Gold is ' + profSel + '. Gray lines are everyone else. Up is better. The dashed line is the playoff cutoff.')); cb.appendChild(lg); host.appendChild(cb);
-    sec(host, 'Season by season');
-    put(host, [['Year', ''], ['Team', 'l'], ['Finish', ''], ['Record', ''], ['PF / game', ''], ['PA / game', '']], mine.slice().reverse().map(function (x) {
-      return [[x.y, ''], [x.r.team, 'l team'], [x.r.r === 1 ? 'Champion' : String(x.r.r), x.r.r === 1 ? 'pos' : ''], [x.r.w + '-' + x.r.l, ''], [f1(x.r.pf / x.g), ''], [f1(x.r.pa / x.g), '']];
-    }));
     var d = getData();
     if (!d.sample && d.keys.length) {
       var rows = analyze(d), cur = null;
@@ -2077,40 +2067,11 @@
     barList(host, list.map(function (m) { var sn = Object.keys(m.ys).length; return { t: m.n, sub: m.w + '-' + (m.g - m.w), v: m.lp / sn, txt: (m.lp / sn).toFixed(1), tot: m.lp, avg: m.pts / m.g }; }),
       { sorts: [['LP / season', function (x, y) { return y.v - x.v; }], ['Total LP', function (x, y) { return y.tot - x.tot; }], ['Avg pts', function (x, y) { return y.avg - x.avg; }]] });
 
-    sec(host, 'Weekly high score wins');
-    var tops = list.slice().sort(function (a, b) { return b.tops - a.tops; });
-    barList(host, tops.filter(function (m) { return m.tops; }).map(function (m) { return { t: m.n, sub: '$' + m.tops * 50, v: m.tops, txt: String(m.tops) }; }), {});
-
     sec(host, 'Highest single weeks');
     function gl(arr) { return arr.slice(0, 10).map(function (g, k) { return [[String(k + 1), 'rk'], [g.m, 'l team'], [g.y + ' Wk ' + g.wk, 'l'], [g.v.toFixed(2), 'pos']]; }); }
     var hi = games.slice().sort(function (a, b) { return b.v - a.v; });
     put(host, [['#', ''], ['Manager', 'l'], ['When', 'l'], ['Pts', '']], gl(hi));
-    sec(host, 'Lowest single weeks');
-    put(host, [['#', ''], ['Manager', 'l'], ['When', 'l'], ['Pts', '']], gl(hi.slice().reverse()));
 
-    // playoff base rates and cutoffs from the sheet seasons
-    var SS = [], kk = d.sample ? 4 : Math.max(1, d.keys.length);
-    ys.forEach(function (y) {
-      var ms = Object.keys(HW[y]), arr = ms.map(function (m) {
-        var lp = 0, lpk = 0, pf = 0, w = 0, ex = 0, p = HW[y][m].p;
-        for (var k = 0; k < 14; k++) { lp += HW[y][m].lp[k]; if (k < kk) lpk += HW[y][m].lp[k]; pf += p[k]; w += HW[y][m].w[k]; }
-        return { m: m, lp: lp, lpk: lpk, pf: pf };
-      });
-      arr.sort(function (a, b) { return (b.lp - a.lp) || (b.pf - a.pf); });
-      arr.forEach(function (r, k) { r.rank = k + 1; });
-      SS.push({ y: y, arr: arr, c6: arr[5].lp, c2: arr[1].lp });
-    });
-    sec(host, 'Playoff cutoffs by season');
-    var c6s = SS.map(function (q) { return q.c6; }).sort(function (a, b) { return a - b; }), c2s = SS.map(function (q) { return q.c2; }).sort(function (a, b) { return a - b; });
-    var crow = SS.map(function (q) { return [[q.y, 'l'], [String(q.c2), ''], [String(q.c6), '']]; });
-    crow.push([['Median', 'l team'], [String(c2s[Math.floor(c2s.length / 2)]), 'pos'], [String(c6s[Math.floor(c6s.length / 2)]), 'pos']]);
-    put(host, [['Season', 'l'], ['2nd place LP', ''], ['6th place LP', '']], crow);
-    if (!d.sample && d.keys.length) {
-      sec(host, 'Playoff base rate after Week ' + kk);
-      var brow = pbaseRows(kk, d).map(function (r) { r.team = MGR26[r.team] || r.team; return r; });
-      put(host, [['Manager', 'l'], ['LP', ''], ['Similar', ''], ['Playoffs', ''], ['Bye', '']],
-        brow.map(function (r) { return [[r.team, 'l team'], [String(r.lp), ''], [String(r.n), ''], [r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '')], [r.by === null ? 'n/a' : Math.round(r.by * 100) + '%', '']]; }));
-    }
     // luck and consistency from all-play
     var LK = {};
     ys.forEach(function (y) {
@@ -2125,31 +2086,9 @@
       });
     });
     var lk = Object.keys(LK).map(function (k) { var o = LK[k], mu = mean(o.ps), sd = Math.sqrt(mean(o.ps.map(function (v) { return (v - mu) * (v - mu); }))); o.mu = mu; o.sd = sd; o.lo = Math.min.apply(null, o.ps); o.hi = Math.max.apply(null, o.ps); o.luck = o.w - o.ex; return o; });
-    sec(host, 'Luck since ' + ys[0]);
-    barList(host, lk.slice().sort(function (a, b) { return b.luck - a.luck; }).map(function (o) { return { t: o.n, sub: o.w + ' W, exp ' + o.ex.toFixed(1), v: o.luck, txt: signed(o.luck, f1), cls: o.luck >= 0 ? 'pos' : 'neg' }; }), { div: true, max: Math.max.apply(null, lk.map(function (o) { return Math.abs(o.luck); })) });
     sec(host, 'Consistency since ' + ys[0]);
     put(host, [['Manager', 'l'], ['Avg', ''], ['Spread', ''], ['Low', ''], ['High', '']],
       lk.slice().sort(function (a, b) { return a.sd - b.sd; }).map(function (o) { return [[o.n, 'l team'], [o.mu.toFixed(1), ''], [o.sd.toFixed(1), ''], [o.lo.toFixed(1), ''], [o.hi.toFixed(1), '']]; }));
-    if (!d.sample && d.keys.length) {
-      sec(host, 'This season against the same weeks before');
-      var rows = [];
-      d.keys.forEach(function (n) {
-        var sc = d.rows.map(function (r) { return r.wk[n] ? r.wk[n].pts : null; }).filter(function (v) { return v !== null; });
-        var avg = mean(sc), hiN = Math.max.apply(null, sc), ha = 0, hh = 0;
-        ys.forEach(function (y) { ha += W[y + ':' + n].avg; hh += W[y + ':' + n].hi; });
-        ha /= ys.length; hh /= ys.length;
-        rows.push([['Wk ' + n, 'l'], [avg.toFixed(1), ''], [ha.toFixed(1), ''], [signed(avg - ha, f1), (avg - ha) >= 0 ? 'pos' : 'neg'], [hiN.toFixed(1), ''], [hh.toFixed(1), '']]);
-      });
-      put(host, [['Week', 'l'], ['2026 avg', ''], ['Past avg', ''], ['Diff', ''], ['2026 high', ''], ['Past high', '']], rows);
-      sec(host, 'Each manager against their own past');
-      var rr = d.rows.map(function (r) {
-        var mg = MGR26[r.team], h = M[mg], now = r.pts / d.keys.length;
-        return { t: mg || r.team, now: now, past: h ? h.pts / h.g : null };
-      }).sort(function (a, b) { return (b.now - (b.past || b.now)) - (a.now - (a.past || a.now)); });
-      put(host, [['Manager', 'l'], ['2026 avg', ''], ['Past avg', ''], ['Diff', '']], rr.map(function (r) {
-        return [[r.t, 'l team'], [r.now.toFixed(1), ''], [r.past === null ? 'n/a' : r.past.toFixed(1), ''], [r.past === null ? '' : signed(r.now - r.past, f1), r.past !== null && r.now >= r.past ? 'pos' : 'neg']];
-      }));
-    }
   }
 
 
