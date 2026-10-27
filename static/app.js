@@ -1023,8 +1023,8 @@
 
 
   // ---- Races: animated charts over time ----
-  var RC = { view: 'bars', metric: 'lp', t: 0, n: 0, playing: false, speed: 1, raf: 0, last: 0, hi: null, upd: null, odds: null, dmetric: 'titles' };
-  function raceStop() { RC.playing = false; if (RC.raf) cancelAnimationFrame(RC.raf); RC.raf = 0; var b = document.getElementById('rplay'); if (b) b.textContent = 'Play'; }
+  var RC = { view: 'bars', metric: 'lp', t: Infinity, n: 0, playing: false, speed: 1, raf: 0, last: 0, hi: null, upd: null, odds: null, dmetric: 'titles' };
+  function raceStop() { bumpStop(); RC.playing = false; if (RC.raf) cancelAnimationFrame(RC.raf); RC.raf = 0; var b = document.getElementById('rplay'); if (b) b.textContent = 'Play'; }
   function raceTick(ts) {
     if (!RC.playing) return;
     RC.raf = requestAnimationFrame(raceTick);
@@ -1258,11 +1258,11 @@
   function renderRaces() {
     var host = $('x-races'); host.textContent = '';
     var d = getData();
-    var views = [['bars', 'Standings race'], ['lines', 'Rank lines'], ['odds', 'Playoff odds'], ['duel', 'Manager duel'], ['dyn', 'Dynasty 2013 to 2025']];
+    var views = [['bars', 'Standings race'], ['lines', 'Rank race'], ['odds', 'Playoff odds'], ['duel', 'Manager duel'], ['dyn', 'Dynasty 2013 to 2025']];
     var pills = el('div', 'rpills');
     views.forEach(function (v) {
       var b = el('button', '', v[1]); b.setAttribute('aria-pressed', String(RC.view === v[0]));
-      b.addEventListener('click', function () { raceStop(); RC.view = v[0]; RC.t = 0; renderRaces(); });
+      b.addEventListener('click', function () { raceStop(); RC.view = v[0]; RC.t = Infinity; renderRaces(); });
       pills.appendChild(b);
     });
     host.appendChild(pills);
@@ -1309,14 +1309,9 @@
       buildBarRace(stage, names, sm, RC.metric === 'lp' ? function (v) { return String(Math.round(v)); } : function (v) { return v.toFixed(0); });
       start(keys.length, wl, 'Bars grow as each week is added. Gold is the leader. Drag the slider to jump to any week.');
     } else if (RC.view === 'lines') {
-      var s2 = weeklySeries(d), nm = {}, rk = {}; d.teams.forEach(function (t, i) { nm[i] = t; rk[i] = s2[i].rank; });
-      RC.hi = RC.hi; var hs = el('div', 'pick'), hl = el('label', 'meta', 'Highlight'), hsel = el('select'), o0 = el('option', '', 'Leader'); o0.value = ''; hsel.appendChild(o0);
-      d.teams.forEach(function (t, i) { var o = el('option', '', t); o.value = i; if (String(RC.hi) === String(i)) o.selected = true; hsel.appendChild(o); });
-      hsel.addEventListener('change', function () { RC.hi = hsel.value === '' ? null : parseInt(hsel.value, 10); raceDraw(); });
-      hs.appendChild(hl); hs.appendChild(hsel); host.insertBefore(hs, ctl);
-      RC.labels = wl;
-      buildLines(stage, nm, rk, { yMin: 1, yMax: 12, ticks: [1, 3, 6, 9, 12], fmt: function (v) { return String(v); }, invert: true, xStart: 1, cut: 6.5 });
-      start(keys.length, wl, 'Standings rank after each week. Up is better. The dashed line is the playoff cutoff.');
+      ctl.hidden = true;
+      caption.textContent = 'Rank after each week. Press Play or drag the slider. Tap a team to follow it. Gold is a bye, garnet is in playoff position, the dashed line is the cutoff.';
+      renderBump(stage, d);
     } else if (RC.view === 'duel') {
       var S = hwAll(), mg = duelMgrs(S);
       if (!RC.dA || mg.indexOf(RC.dA) < 0) RC.dA = mg.indexOf('James') >= 0 ? 'James' : mg[0];
@@ -1536,6 +1531,7 @@
   function showAsof() {
     var p = $('asof'), t = UP && UP.asof ? Date.parse(UP.asof) : NaN;
     if (!p || isNaN(t)) { if (p) p.hidden = true; return; }
+    try { var dd = getData(); if (!dd.sample && dd.keys.length && UP.week <= Math.max.apply(null, dd.keys.map(Number))) { p.hidden = true; return; } } catch (e) {}
     var mins = Math.max(0, Math.round((Date.now() - t) / 60000)), age;
     if (mins < 2) age = 'just now'; else if (mins < 90) age = mins + ' min ago'; else if (mins < 2880) age = Math.round(mins / 60) + ' h ago'; else age = Math.round(mins / 1440) + ' d ago';
     var dt = new Date(t), day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()], h = dt.getHours(), m = dt.getMinutes();
@@ -1577,7 +1573,7 @@
     host.appendChild(ctl);
 
     var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'bump', role: 'group', 'aria-label': 'Rank by week for every team' });
-    host.appendChild(svg);
+    var swrap = el('div', 'scroll'); swrap.appendChild(svg); host.appendChild(swrap);
     for (var rk = 1; rk <= R; rk++) {
       svg.appendChild(sv('line', { x1: L, x2: W - RT + 12, y1: y(rk), y2: y(rk), 'class': 'guide' }));
       svg.appendChild(sv('text', { x: L - 22, y: y(rk) + 4, 'class': 'rk-l' }, String(rk)));
@@ -1952,7 +1948,6 @@
   function renderAnalytics() {
     var d = getData();
     $('ameta').textContent = (d.sample ? 'Example data. ' : '') + 'After week ' + d.keys[d.keys.length - 1] + '.';
-    renderBump($('x-bump'), d);
     renderHeat($('x-heat'), d);
     renderRadar($('x-radar'), d);
   }
@@ -2306,6 +2301,7 @@
       $('g-' + G[0]).setAttribute('aria-selected', String(G === g));
       G[1].forEach(function (k) { $('tab-' + k).hidden = G !== g; });
     });
+    $('subnav').hidden = g[1].length < 2;
     TABS.forEach(function (k) {
       $('p-' + k).hidden = k !== t;
       $('tab-' + k).setAttribute('aria-selected', String(k === t));

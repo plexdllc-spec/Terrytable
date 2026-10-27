@@ -494,3 +494,9 @@
   th.sorted-asc::after { content: ' \25B2'; opacity: 1; }
   th.sorted-desc::after { content: ' \25BC'; opacity: 1; }
   th.sortable:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+  #page.mv .hr { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 8px; }
+  #page.mv #mv { padding: 3px 10px; font-size: .78rem; background: transparent; color: var(--muted); border: 1px solid var(--line); box-shadow: none; }
+  #mchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  #mchips::-webkit-scrollbar { display: none; }
+  #mchips .chip { flex: 0 0 auto; }
+
