@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'races', 'playoffs', 'matchups', 'alltime'];
+  var TABS = ['table', 'races', 'playoffs', 'whatif', 'matchups', 'alltime'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -555,6 +555,167 @@
       pick.map(function (q) { return [[q[0], 'l'], [q[1].name, 'l team'], [d.teams[q[1].t], 'l'], [f2(q[1].pts), 'pos']]; }));
   }
 
+  // ---- What ifs: schedule swap, opponents' effort, beating the projection, superlatives ----
+  function seasonGames(d) {
+    var opp = {}, sc = {};
+    d.keys.forEach(function (n) {
+      opp[n] = {}; sc[n] = {};
+      d.weeksObj[n].forEach(function (m) { opp[n][m.a] = m.b; opp[n][m.b] = m.a; sc[n][m.a] = num(m.as); sc[n][m.b] = num(m.bs); });
+    });
+    return { opp: opp, sc: sc };
+  }
+  // Row a keeps its own weekly scores and plays column b's opponents. If b's opponent that week was a, a plays b instead.
+  function swapGrid(d) {
+    var S = seasonGames(d), ids = d.rows.map(function (r) { return r.i; }), G = {};
+    ids.forEach(function (a) {
+      G[a] = {};
+      ids.forEach(function (b) {
+        var c = { w: 0, l: 0, t: 0, games: [] };
+        d.keys.forEach(function (n) {
+          var o = S.opp[n][b]; if (o === a) o = b;
+          var ms = Math.round(S.sc[n][a] * 100), os = Math.round(S.sc[n][o] * 100), res = ms > os ? 'W' : (ms < os ? 'L' : 'T');
+          if (res === 'W') c.w++; else if (res === 'L') c.l++; else c.t++;
+          c.games.push({ n: n, o: o, ms: ms / 100, os: os / 100, res: res, real: S.opp[n][a] === o });
+        });
+        G[a][b] = c;
+      });
+    });
+    return G;
+  }
+  var swapSel = null;
+  function mgrName(d, i) { return MGR26[d.teams[i]] || d.teams[i]; }
+  function renderSwap(host, d) {
+    var G = swapGrid(d), rows = d.rows, ids = rows.map(function (r) { return r.i; }), byI = {};
+    rows.forEach(function (r) { byI[r.i] = r; });
+    if (!swapSel || !G[swapSel[0]] || !G[swapSel[0]][swapSel[1]]) {
+      var best = null;
+      ids.forEach(function (a) { ids.forEach(function (b) { if (a === b) return; var dv = G[a][b].w - G[a][a].w; if (!best || Math.abs(dv) > Math.abs(best[2])) best = [a, b, dv]; }); });
+      swapSel = best ? [best[0], best[1]] : [ids[0], ids[0]];
+    }
+    host.appendChild(el('p', 'cap keep', 'Each row keeps one manager\'s real weekly scores. Each column swaps in another manager\'s opponents. Gold squares are the real records. Green means more wins than real life, red means fewer. Tap a square for the week-by-week.'));
+    var wrap = el('div', 'scroll'), grid = el('div', 'swg');
+    grid.style.gridTemplateColumns = 'minmax(52px, auto) repeat(' + ids.length + ', minmax(0, 1fr))';
+    var corner = el('div', 'swc swh'); corner.appendChild(el('small', '', 'scores ↓ / schedule →')); grid.appendChild(corner);
+    ids.forEach(function (b) { var h = el('div', 'swc swh swcol', mgrName(d, b)); h.title = d.teams[b] + ' schedule'; grid.appendChild(h); });
+    var cells = [];
+    ids.forEach(function (a) {
+      grid.appendChild(el('div', 'swc swh swrow', mgrName(d, a)));
+      var real = G[a][a].w;
+      ids.forEach(function (b) {
+        var c = G[a][b], dv = c.w - real, cell = el('button', 'swc swv' + (a === b ? ' self' : ''), String(c.w));
+        cell.type = 'button';
+        if (a !== b && dv !== 0) {
+          var k = Math.min(1, Math.abs(dv) / 3);
+          cell.style.background = dv > 0 ? 'rgba(127, 227, 169, ' + (0.18 + 0.5 * k).toFixed(2) + ')' : 'rgba(255, 110, 110, ' + (0.18 + 0.5 * k).toFixed(2) + ')';
+        }
+        cell.setAttribute('aria-label', mgrName(d, a) + ' scores with ' + mgrName(d, b) + ' schedule: ' + c.w + '-' + c.l + (c.t ? '-' + c.t : ''));
+        cell.addEventListener('click', function () { swapSel = [a, b]; mark(); detail(); });
+        cell._ab = [a, b]; cells.push(cell);
+        grid.appendChild(cell);
+      });
+    });
+    wrap.appendChild(grid); host.appendChild(wrap);
+    var det = el('div', 'swd'); host.appendChild(det);
+    function mark() { cells.forEach(function (c) { c.classList.toggle('on', c._ab[0] === swapSel[0] && c._ab[1] === swapSel[1]); }); }
+    function detail() {
+      det.textContent = '';
+      var a = swapSel[0], b = swapSel[1], c = G[a][b], R = G[a][a], A = byI[a];
+      var rec = c.w + '-' + c.l + (c.t ? '-' + c.t : ''), realRec = R.w + '-' + R.l + (R.t ? '-' + R.t : ''), dv = c.w - R.w;
+      var head = el('div', 'swd-h');
+      head.appendChild(el('b', '', a === b ? A.team + ' as it really happened: ' + rec : mgrName(d, a) + '’s scores with ' + mgrName(d, b) + '’s schedule: ' + rec));
+      if (a !== b) {
+        var lp = A.lp + 2 * dv, rk = 1;
+        rows.forEach(function (q) { if (q.i !== a && (q.lp > lp || (q.lp === lp && q.pts > A.pts))) rk++; });
+        head.appendChild(el('span', dv > 0 ? 'pos' : (dv < 0 ? 'neg' : ''), 'Real record ' + realRec + '. ' + (dv === 0 ? 'Same wins.' : (dv > 0 ? '+' : '') + dv + ' win' + (Math.abs(dv) === 1 ? '' : 's') + ', ' + (dv > 0 ? '+' : '') + (2 * dv) + ' league points, which would rank ' + ordn(rk) + ' (now ' + ordn(A.rank) + ').')));
+      }
+      det.appendChild(head);
+      var list = el('div', 'swd-l');
+      c.games.forEach(function (g) {
+        var r = el('div', 'swd-r' + (a !== b && !g.real ? ' diff' : ''));
+        r.appendChild(el('span', 'swd-w', 'Wk ' + g.n));
+        r.appendChild(el('span', 'swd-o', 'vs ' + mgrName(d, g.o)));
+        r.appendChild(el('span', 'swd-s', f2(g.ms) + ' - ' + f2(g.os)));
+        r.appendChild(el('span', 'swd-res ' + (g.res === 'W' ? 'pos' : (g.res === 'L' ? 'neg' : '')), g.res));
+        list.appendChild(r);
+      });
+      det.appendChild(list);
+      if (a !== b) det.appendChild(el('p', 'meta keep', 'Highlighted weeks are the ones with a different opponent from real life. Rank assumes everyone else keeps their real results.'));
+    }
+    mark(); detail();
+    sec(host, 'Best and worst schedules for each manager');
+    put(host, [['Manager', 'l'], ['Real', ''], ['Avg of other schedules', ''], ['Best schedule', 'l'], ['Worst schedule', 'l']], ids.map(function (a) {
+      var others = ids.filter(function (b) { return b !== a; }), sw = 0, bb = null, ww = null;
+      others.forEach(function (b) { var c = G[a][b]; sw += c.w; if (!bb || c.w > G[a][bb].w) bb = b; if (!ww || c.w < G[a][ww].w) ww = b; });
+      var av = sw / others.length, R = G[a][a], dv = R.w - av;
+      return [[mgrName(d, a), 'l team'], [R.w + '-' + R.l, ''], [f1(av) + ' wins (' + (dv >= 0 ? '+' : '') + f1(dv) + ')', dv > 0.5 ? 'pos' : (dv < -0.5 ? 'neg' : '')],
+        [mgrName(d, bb) + ' ' + G[a][bb].w + '-' + G[a][bb].l, 'l'], [mgrName(d, ww) + ' ' + G[a][ww].w + '-' + G[a][ww].l, 'l']];
+    }));
+  }
+  function renderEffort(host, d) {
+    var S = seasonGames(d), K = d.keys.length, rows = d.rows;
+    if (K < 2) { host.appendChild(el('p', 'cap', 'Needs at least two weeks.')); return; }
+    host.appendChild(el('p', 'cap keep', 'How far above or below their own usual score your opponents played when they faced you. Usual means their average in every other week.'));
+    barList(host, rows.map(function (r) {
+      var tot = 0, hi = null;
+      d.keys.forEach(function (n) {
+        var o = S.opp[n][r.i], s = 0; d.keys.forEach(function (m) { if (m !== n) s += S.sc[m][o]; });
+        var dv = S.sc[n][o] - s / (K - 1); tot += dv;
+        if (!hi || dv > hi.v) hi = { v: dv, n: n, o: o };
+      });
+      var v = tot / K;
+      return { t: r.team, ti: r.i, v: v, txt: signed(v, f1), cls: v >= 0 ? 'neg' : 'pos', sub: 'Worst: Wk ' + hi.n + ', ' + mgrName(d, hi.o) + ' ' + signed(hi.v, f1) };
+    }).sort(function (a, b) { return b.v - a.v; }), { div: true });
+  }
+  function renderBeatProj(host) {
+    var x = luReady(host); if (!x) return;
+    var d = x.d, rows = d.rows;
+    host.appendChild(el('p', 'cap keep', 'Starters’ actual points minus Yahoo’s projection for those same starters, per week. Positive means the lineup outplayed the projection.'));
+    barList(host, rows.map(function (r) {
+      var tot = 0, beat = 0, n = 0;
+      x.keys.forEach(function (k) { var pr = projOf(k, r.i), ac = r.wk[k].pts; tot += ac - pr; if (ac > pr) beat++; n++; });
+      var v = n ? tot / n : 0;
+      return { t: r.team, ti: r.i, v: v, txt: signed(v, f1), cls: v >= 0 ? 'pos' : 'neg', sub: 'Beat it in ' + beat + ' of ' + n + ' weeks' };
+    }).sort(function (a, b) { return b.v - a.v; }), { div: true });
+  }
+  function renderSuper(host, d) {
+    var g = [];
+    d.keys.forEach(function (n) {
+      d.weeksObj[n].forEach(function (m) {
+        var a = num(m.as), b = num(m.bs), w = a >= b ? [m.a, a] : [m.b, b], l = a >= b ? [m.b, b] : [m.a, a];
+        g.push({ n: n, w: w, l: l, mg: w[1] - l[1] });
+      });
+    });
+    function pick(f, cmp) { return g.slice().sort(cmp)[0]; }
+    var blow = pick(null, function (p, q) { return q.mg - p.mg; }), close = pick(null, function (p, q) { return p.mg - q.mg; });
+    var hiL = pick(null, function (p, q) { return q.l[1] - p.l[1]; }), loW = pick(null, function (p, q) { return p.w[1] - q.w[1]; });
+    var hi = pick(null, function (p, q) { return q.w[1] - p.w[1]; }), lo = pick(null, function (p, q) { return p.l[1] - q.l[1]; });
+    var T = d.teams, items = [
+      ['Biggest blowout', 'Wk ' + blow.n + ': ' + T[blow.w[0]] + ' over ' + T[blow.l[0]], 'by ' + f2(blow.mg)],
+      ['Closest game', 'Wk ' + close.n + ': ' + T[close.w[0]] + ' over ' + T[close.l[0]], 'by ' + f2(close.mg)],
+      ['Highest score in a loss', 'Wk ' + hiL.n + ': ' + T[hiL.l[0]] + ' lost to ' + T[hiL.w[0]], f2(hiL.l[1])],
+      ['Lowest score in a win', 'Wk ' + loW.n + ': ' + T[loW.w[0]] + ' beat ' + T[loW.l[0]], f2(loW.w[1])],
+      ['Highest score', 'Wk ' + hi.n + ': ' + T[hi.w[0]], f2(hi.w[1])],
+      ['Lowest score', 'Wk ' + lo.n + ': ' + T[lo.l[0]], f2(lo.l[1])]
+    ];
+    var box = el('div', 'matchups');
+    items.forEach(function (it) {
+      var row = el('div', 'prizeitem'), pw = el('span', 'pw', it[0]); pw.style.minWidth = '9.5rem';
+      row.appendChild(pw); row.appendChild(el('span', 'pn', it[1])); row.appendChild(el('span', 'ps', it[2]));
+      box.appendChild(row);
+    });
+    host.appendChild(box);
+  }
+  function renderWhatif() {
+    var d = getData();
+    ['x-swap', 'x-effort', 'x-beat', 'x-super'].forEach(function (id) { $(id).textContent = ''; });
+    if (d.sample || !d.keys.length) { $('x-swap').appendChild(el('p', 'cap', 'These appear once real weeks are loaded.')); return; }
+    $('wmeta').textContent = 'This season through week ' + d.keys[d.keys.length - 1] + '.';
+    renderSwap($('x-swap'), d);
+    renderEffort($('x-effort'), d);
+    renderBeatProj($('x-beat'));
+    renderSuper($('x-super'), d);
+  }
+
   // ---- SVG helpers ----
   var NS = 'http://www.w3.org/2000/svg';
   function sv(tag, attrs, text) {
@@ -734,7 +895,7 @@
     return null;
   }
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['table', 'matchups', 'playoffs'];
+  var LUTABS = ['table', 'matchups', 'playoffs', 'whatif'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -1977,6 +2138,7 @@
     table: function () { renderTable(); renderHighlights(); },
     races: renderRaces,
     playoffs: function () { renderPlayoffs(); renderPower(); },
+    whatif: renderWhatif,
     matchups: function () { renderNext(); renderMatchups(); renderTotw(); renderRecap(); renderPlayers(); },
     alltime: function () { renderAlltime(); renderProfiles(); renderCards(); renderSeasons(); renderRecords(); }
   };
@@ -2285,7 +2447,7 @@
 
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'races', 'playoffs']],
+    ['standings', ['table', 'races', 'playoffs', 'whatif']],
     ['week', ['matchups']],
     ['history', ['alltime']]
   ];

@@ -83,6 +83,7 @@
     <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Standings</button>
     <button role="tab" id="tab-races" aria-selected="false" data-tab="races">Races</button>
     <button role="tab" id="tab-playoffs" aria-selected="false" data-tab="playoffs">Playoff picture</button>
+    <button role="tab" id="tab-whatif" aria-selected="false" data-tab="whatif">What ifs</button>
     <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
   </nav>
@@ -117,6 +118,26 @@
       </div>
     </section>
 
+
+    <section id="p-whatif" hidden>
+      <div class="meta" id="wmeta"></div>
+      <div class="ablock">
+        <div class="ph" data-open="1">Schedule swap</div>
+        <div id="x-swap"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Opponents’ effort</div>
+        <div id="x-effort"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Beat the projection</div>
+        <div id="x-beat"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Superlatives</div>
+        <div id="x-super"></div>
+      </div>
+    </section>
 
     <section id="p-matchups" hidden>
       <div class="ablock">

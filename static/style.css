@@ -462,4 +462,23 @@
   .brk-t { font: 700 1.15rem var(--f-disp); line-height: 1.15; overflow-wrap: anywhere; }
   .brk-v { color: var(--gold); font: 700 .8rem var(--f-body); letter-spacing: .08em; text-transform: uppercase; margin: 3px 0; }
   .brk-h { color: var(--muted); font-size: .84rem; margin-top: 6px; }
+  .swg { display: grid; gap: 2px; margin-top: 10px; }
+  .swc { display: grid; place-items: center; min-height: 30px; min-width: 0; font: 700 .95rem var(--f-disp); font-variant-numeric: tabular-nums; }
+  .swh { color: var(--muted); font: 600 .72rem var(--f-body); overflow: hidden; }
+  .swh small { font: 500 .62rem var(--f-body); color: var(--muted); text-align: left; line-height: 1.1; }
+  .swcol { writing-mode: vertical-rl; transform: rotate(180deg); min-height: 64px; padding: 4px 0; }
+  .swrow { justify-content: start; padding-right: 6px; white-space: nowrap; color: var(--ink); }
+  .swv { border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; padding: 0; border-radius: 3px; }
+  .swv:hover { border-color: var(--gold-soft); }
+  .swv.self { border: 2px solid var(--gold); color: var(--gold); }
+  .swv.on { outline: 3px solid var(--ink); outline-offset: 1px; z-index: 1; }
+  .swv:focus-visible { outline: 3px solid var(--gold); }
+  .swd { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--gold); padding: 10px 12px; }
+  .swd-h { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+  .swd-h b { font: 700 1.1rem var(--f-disp); }
+  .swd-h span { font-size: .9rem; color: var(--muted); } .swd-h .pos { color: var(--pos); } .swd-h .neg { color: var(--neg); }
+  .swd-r { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) auto 1.4rem; gap: 8px; padding: 4px 6px; font-size: .9rem; font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); }
+  .swd-r.diff { background: rgba(242, 182, 50, .1); }
+  .swd-w { color: var(--muted); } .swd-o { overflow-wrap: anywhere; } .swd-res { font-weight: 700; text-align: center; }
+  .swd-res.pos { color: var(--pos); } .swd-res.neg { color: var(--neg); }
 
