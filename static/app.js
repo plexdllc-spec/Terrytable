@@ -806,6 +806,7 @@
     return out;
   }
 
+  var WADJ = 0.5; // share of Yahoo's week-to-week projection swing applied to future weeks
   var TEAM_SD = 5; // season-long error in each team strength, added to every remaining week mean. Widens the tails so long shots are not undersold.
   function simulate(x, o) {
     var N = o.simN || 5000, ids = o.ids, T = ids.length, sigma = o.fm.sigma, r = mulberry32(20261006);
@@ -821,7 +822,7 @@
       for (var w = start; w <= WEEKS; w++) {
         var sc = {}, tot = 0;
         ids.forEach(function (i) {
-          var mu = (o.up && w === o.up.week && o.f5[i] !== undefined) ? o.f5[i] : o.mu[i];
+          var mu = (o.up && w === o.up.week && o.f5[i] !== undefined) ? o.f5[i] : o.mu[i] + (o.wadj && o.wadj[w] ? o.wadj[w][i] || 0 : 0);
           var rm = (o.up && w === o.up.week && o.fill[i]) ? Math.sqrt(o.fill[i].rem) : 1;
           sc[i] = mu + off[i] + sigma * rm * gauss(r); tot += sc[i];
         });
@@ -865,6 +866,18 @@
       if (o.up && o.up.lineups[i]) { var tt = o.up.tot && o.up.tot[i], f = tt ? { proj: tt[1], holes: 0, rem: tt[1] - tt[0] <= 0.005 ? 0 : Math.min(1, Math.max(0.04, (tt[1] - tt[0]) / tt[1])) } : fillOf(o.up.lineups[i]); o.fill[i] = f; arr.push(f.proj); o.f5[i] = f.proj + fm.k * fm.bias[i]; }
       o.mu[i] = mean(arr) + fm.k * fm.bias[i];
     });
+    // Week-by-week shape from Yahoo's long-range team projections (byes, injuries). Each team keeps its own level from the model;
+    // half of its deviation from its own average projection is applied, because far-off projections undercount bench fill-ins.
+    o.wadj = {};
+    var PJ = UP && UP.proj ? UP.proj : null;
+    if (PJ) {
+      var avgP = {};
+      o.ids.forEach(function (i) { var v = []; Object.keys(PJ).forEach(function (w) { if (PJ[w][i] !== undefined) v.push(PJ[w][i]); }); avgP[i] = v.length ? mean(v) : null; });
+      Object.keys(PJ).forEach(function (w) {
+        o.wadj[w] = {};
+        o.ids.forEach(function (i) { o.wadj[w][i] = avgP[i] === null || PJ[w][i] === undefined ? 0 : WADJ * (PJ[w][i] - avgP[i]); });
+      });
+    }
     o.bt = backtest(H);
     o.sim = simulate(x, o);
     var opp = {}, lgMu = mean(o.ids.map(function (i) { return o.mu[i]; })), sched = fullSched();
