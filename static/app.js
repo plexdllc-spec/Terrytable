@@ -2024,7 +2024,8 @@
           while (n && !(n.nodeType === 1 && n.classList.contains('ph'))) { nodes.push(n); n = n.nextSibling; }
           parent.insertBefore(det, h);
           sm.appendChild(h); det.appendChild(sm); nodes.forEach(function (x) { body.appendChild(x); }); det.appendChild(body);
-          det.open = key in OPENSEC ? OPENSEC[key] : (firstInTab && idx === 0);
+          var lead = sc.querySelector('.ph[data-open]');
+          det.open = key in OPENSEC ? OPENSEC[key] : (lead ? h === lead : (firstInTab && idx === 0));
           det.addEventListener('toggle', function () { OPENSEC[key] = det.open; });
         });
         var all = sc.querySelectorAll('details.csec');
