@@ -409,6 +409,36 @@
     box.appendChild(el('div', 'cutline', 'Playoff cutoff'));
     tier('On the bubble', 'p-bub', rows.slice(6, 8), function (r, i) { return plate(r, 'p-bub', d, i, gapText(r, r6, false), 'League pts'); });
     tier('Outside', 'p-out', rows.slice(8), function (r, i) { return plate(r, 'p-out', d, i, gapText(r, r6, false), 'League pts'); });
+    if (!d.sample && d.keys.length) renderBracket(box, d);
+  }
+  // If the season ended today: byes and first-round games, with this season's meeting if there was one.
+  function renderBracket(box, d) {
+    var rows = d.rows, wrap = el('div', 'tier brk');
+    wrap.appendChild(el('h3', 'tier-h', 'If the season ended today'));
+    function met(a, b) {
+      var out = [];
+      d.keys.forEach(function (n) {
+        (d.weeksObj[n] || []).forEach(function (m) {
+          if ((m.a === a.i && m.b === b.i) || (m.a === b.i && m.b === a.i)) {
+            var sa = m.a === a.i ? num(m.as) : num(m.bs), sb = m.a === a.i ? num(m.bs) : num(m.as);
+            out.push('Week ' + n + ': ' + (sa > sb ? a.team : b.team) + ' won ' + f2(Math.max(sa, sb)) + ' to ' + f2(Math.min(sa, sb)));
+          }
+        });
+      });
+      return out.length ? out.join('. ') + '.' : 'Have not met this season.';
+    }
+    var g = el('div', 'brk-g');
+    [[rows[2], rows[5]], [rows[3], rows[4]]].forEach(function (p) {
+      var c = el('div', 'brk-m');
+      c.appendChild(el('div', 'brk-t', '#' + p[0].rank + ' ' + p[0].team));
+      c.appendChild(el('div', 'brk-v', 'vs'));
+      c.appendChild(el('div', 'brk-t', '#' + p[1].rank + ' ' + p[1].team));
+      c.appendChild(el('div', 'brk-h', met(p[0], p[1])));
+      g.appendChild(c);
+    });
+    wrap.appendChild(g);
+    wrap.appendChild(el('p', 'meta keep', 'Byes: #1 ' + rows[0].team + ' and #2 ' + rows[1].team + '. They meet the first-round winners in the semifinals.'));
+    box.appendChild(wrap);
   }
 
   // ---- Matchup scorebugs ----
