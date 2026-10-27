@@ -44,6 +44,29 @@ def main():
                 if visible != ["p-" + t]:
                     failures.append(f"tab {t} shows {visible}")
 
+        # This Week: the Up next preview and Team of the week render with real data.
+        page.evaluate("document.getElementById('g-week').click()")
+        page.wait_for_timeout(2500)
+        nx = page.eval_on_selector_all("#x-next .nx", "els => els.length")
+        if nx not in (0, 6):
+            failures.append(f"Up next shows {nx} games, expected 6")
+        if nx == 0 and not page.eval_on_selector("#x-next", "e => e.textContent.length > 0"):
+            failures.append("Up next is empty")
+        totw = page.eval_on_selector_all("#x-totw tr", "els => els.length")
+        if totw and totw != 9:
+            failures.append(f"Team of the week has {totw - 1} players, expected 8")
+
+        # Every table header is sortable.
+        bad = page.evaluate("() => [...document.querySelectorAll('main table')].filter(t => t.rows.length && ![...t.rows[0].cells].every(c => c.classList.contains('sortable'))).length")
+        if bad:
+            failures.append(f"{bad} tables without sortable headers")
+
+        api = page.evaluate("() => fetch('/api/clinch').then(r => r.json())")
+        if "teams" not in api:
+            failures.append("/api/clinch returned no teams")
+
+        page.evaluate("document.getElementById('g-history').click()")
+        page.wait_for_timeout(800)
         page.evaluate("document.getElementById('goduel').click()")
         page.wait_for_timeout(400)
         view = page.evaluate("() => document.querySelector('#x-races .rpills [aria-pressed=\"true\"]') && document.querySelector('#x-races .rpills [aria-pressed=\"true\"]').textContent")
@@ -59,7 +82,7 @@ def main():
         for f in failures:
             print(" -", f)
         sys.exit(1)
-    print("OK: groups, subtabs, sections and duel button all work; no page errors")
+    print("OK: groups, subtabs, sections, Up next, team of the week, sortable tables, clinch API and duel button all work; no page errors")
 
 
 if __name__ == "__main__":

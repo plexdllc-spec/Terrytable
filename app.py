@@ -239,6 +239,18 @@ def api_history_weeks():
     return jsonify(seasons={})
 
 
+CLINCH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clinch.json")
+
+
+@app.route("/api/clinch")
+def api_clinch():
+    # Exact clinch and elimination flags, written by tools/clinch.py after each week's finals.
+    if os.path.exists(CLINCH_FILE):
+        with open(CLINCH_FILE, encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    return jsonify({})
+
+
 @app.route("/login")
 def login():
     key = request.args.get("key", "")

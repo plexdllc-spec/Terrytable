@@ -322,6 +322,7 @@
       tr.appendChild(tdRank);
       var tdTeam = el('td', 'l c2 team', r.team);
       if (r.rank <= 2) tdTeam.appendChild(el('span', 'bye', 'Bye'));
+      var tcb = clinchBadge(r.i); if (tcb) tdTeam.appendChild(tcb);
       tr.appendChild(tdTeam);
       var tdLp = el('td', 'lp'); setNum(tdLp, 'lp' + r.i, r.lp, fmtInt); tr.appendChild(tdLp);
       var tdPf = el('td', 'pf'); setNum(tdPf, 'pf' + r.i, r.pts, f2); tr.appendChild(tdPf);
@@ -344,6 +345,7 @@
       var cr = el('span', 'cr'); cr.appendChild(el('span', 'rk', String(r.rank))); cr.appendChild(moveBadge(r)); s.appendChild(cr);
       var nm = el('span', 'cn', r.team);
       if (r.rank <= 2) nm.appendChild(el('span', 'bye', 'Bye'));
+      var ccb = clinchBadge(r.i); if (ccb) nm.appendChild(ccb);
       nm.appendChild(el('span', 'cs', r.w + '-' + r.l + (r.t ? '-' + r.t : '') + '  ·  ' + f2(r.pts) + ' pts for'));
       s.appendChild(nm);
       var lp = el('span', 'cl'); setNum(lp, 'clp' + r.i, r.lp, fmtInt); lp.appendChild(el('small', '', 'League pts'));
@@ -374,7 +376,8 @@
     p.style.setProperty('--d', (i * 0.06) + 's');
     p.appendChild(el('div', 'sd', String(r.rank)));
     var mid = el('div');
-    mid.appendChild(el('div', 'pn', r.team));
+    var pnm = el('div', 'pn', r.team), cb = clinchBadge(r.i); if (cb) pnm.appendChild(cb);
+    mid.appendChild(pnm);
     mid.appendChild(el('div', 'pg', line1));
     p.appendChild(mid);
     var pl = el('div', 'pl', String(r.lp)); pl.appendChild(el('small', '', line2));
@@ -421,7 +424,7 @@
   function renderMatchups() {
     var d = getData();
     if (mWeek === null || d.keys.indexOf(mWeek) < 0) mWeek = d.keys[d.keys.length - 1];
-    weekChips($('mchips'), d.keys, mWeek, function (n) { mWeek = n; renderMatchups(); });
+    weekChips($('mchips'), d.keys, mWeek, function (n) { mWeek = n; renderMatchups(); renderTotw(); });
     var ms = d.weeksObj[mWeek], mx = -Infinity;
     ms.forEach(function (m) { mx = Math.max(mx, Math.round(num(m.as) * 100), Math.round(num(m.bs) * 100)); });
     var avg = d.rows[0].wk[mWeek].avg;
@@ -445,6 +448,81 @@
       bug.appendChild(f);
       box.appendChild(bug);
     });
+  }
+
+  // ---- Up next: the coming week's games and what each result does to playoff odds ----
+  function renderNext() {
+    var host = $('x-next'); if (!host) return;
+    var x = luReady(host); if (!x) return;
+    var o = null; try { o = getOutlook(x); } catch (e) { o = null; }
+    if (!o || !o.sim) { host.appendChild(el('p', 'cap', 'Odds are not available yet.')); return; }
+    var s = o.sim, wk = s.start, d = x.d, N2 = s.N;
+    if (wk > WEEKS) { host.appendChild(el('p', 'cap', 'The regular season is complete.')); return; }
+    var games = fullSched()[String(wk)];
+    if (!games || !games.length) { host.appendChild(el('p', 'cap', 'The Week ' + wk + ' schedule is not loaded yet.')); return; }
+    var byI = {}; d.rows.forEach(function (r) { byI[r.i] = r; });
+    function odds(i) { var c = 0; s.pos[i].forEach(function (v, k) { if (k < 6) c += v; }); return c / N2; }
+    function split(i) {
+      var wn = 0, wi = 0, ln = 0, li = 0, g = s.g1[i], ip = s.inP[i];
+      for (var q = 0; q < N2; q++) { if (g[q] >= 2) { wn++; wi += ip[q]; } else { ln++; li += ip[q]; } }
+      return { pw: wn / N2, win: wn > 40 ? wi / wn : null, loss: ln > 40 ? li / ln : null };
+    }
+    function sw(sp) { return sp.win !== null && sp.loss !== null ? sp.win - sp.loss : 0; }
+    var cards = games.map(function (g) {
+      var sa = split(g[0]), sb = split(g[1]);
+      return { A: byI[g[0]], B: byI[g[1]], sa: sa, sb: sb, swing: sw(sa) + sw(sb) };
+    });
+    cards.sort(function (a, b) { return b.swing - a.swing; });
+    var best = cards[0];
+    host.appendChild(el('p', 'cap keep', 'Week ' + wk + '. The big number is the chance to win, from the season model. The line below shows playoff odds now, after a win (W) and after a loss (L).'));
+    var box = el('div', 'nextgrid');
+    cards.forEach(function (c) {
+      var gotw = c === best && c.swing > 0.05, card = el('div', 'nx' + (gotw ? ' gotw' : ''));
+      if (gotw) card.appendChild(el('div', 'nx-tag', 'Game of the week: biggest playoff swing'));
+      [[c.A, c.sa], [c.B, c.sb]].forEach(function (t) {
+        var r = t[0], sp = t[1], row = el('div', 'nx-r');
+        var nm = el('div', 'nx-n'); nm.appendChild(el('span', 'nx-t', r.team));
+        nm.appendChild(el('small', '', '#' + r.rank + '  ·  ' + r.w + '-' + r.l + '  ·  ' + r.lp + ' LP'));
+        row.appendChild(nm);
+        var pw = el('div', 'nx-p', Math.round(sp.pw * 100) + '%'); pw.appendChild(el('small', '', 'to win')); row.appendChild(pw);
+        var od = el('div', 'nx-o');
+        od.appendChild(el('span', '', 'Playoffs ' + pctText(odds(r.i))));
+        if (sp.win !== null && sp.loss !== null && Math.abs(sp.win - sp.loss) >= 0.005) {
+          od.appendChild(el('span', 'pos', 'W ' + pctText(sp.win)));
+          od.appendChild(el('span', 'neg', 'L ' + pctText(sp.loss)));
+        }
+        row.appendChild(od);
+        card.appendChild(row);
+      });
+      box.appendChild(card);
+    });
+    host.appendChild(box);
+  }
+
+  // ---- Team of the week: the best lineup that could be built from every starter that week ----
+  function renderTotw() {
+    var host = $('x-totw'); if (!host) return;
+    var x = luReady(host); if (!x) return;
+    var d = x.d, n = mWeek !== null && x.keys.indexOf(mWeek) >= 0 ? mWeek : x.keys[x.keys.length - 1];
+    var ps = starters(x).filter(function (p) { return p.n === n; }).sort(function (a, b) { return b.pts - a.pts; });
+    var used = {}, pick = [], tot = 0;
+    function take(slot, ok, cnt) {
+      ps.forEach(function (p) {
+        var k = p.name + '|' + p.t;
+        if (cnt > 0 && !used[k] && ok(p.pos)) { used[k] = 1; pick.push([slot, p]); tot += p.pts; cnt--; }
+      });
+    }
+    take('QB', function (q) { return q === 'QB'; }, 1);
+    take('RB', function (q) { return q === 'RB'; }, 2);
+    take('WR', function (q) { return q === 'WR'; }, 2);
+    take('TE', function (q) { return q === 'TE'; }, 1);
+    take('FLEX', function (q) { return q === 'RB' || q === 'WR' || q === 'TE'; }, 2);
+    var topTeam = d.rows.slice().sort(function (a, b) { return b.wk[n].pts - a.wk[n].pts; })[0];
+    var by = {}; pick.forEach(function (q) { by[q[1].t] = (by[q[1].t] || 0) + 1; });
+    var most = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })[0];
+    host.appendChild(el('p', 'cap keep', 'Week ' + n + '. The best lineup anyone could have built from the league\'s starters scored ' + f2(tot) + ', against ' + f2(topTeam.wk[n].pts) + ' for the week\'s top team (' + topTeam.team + '). ' + d.teams[most] + ' supplied the most picks (' + by[most] + ').'));
+    put(host, [['Slot', 'l'], ['Player', 'l'], ['Fantasy team', 'l'], ['Pts', '']],
+      pick.map(function (q) { return [[q[0], 'l'], [q[1].name, 'l team'], [d.teams[q[1].t], 'l'], [f2(q[1].pts), 'pos']]; }));
   }
 
   // ---- SVG helpers ----
@@ -535,7 +613,7 @@
     x.keys.forEach(function (n) {
       x.d.rows.forEach(function (r) {
         LU[n][r.i].forEach(function (p) {
-          all.push({ t: r.i, nfl: p.t, n: n, name: p.p, s: p.s, proj: p.proj, pts: p.pts, f: p.f || '' });
+          all.push({ t: r.i, nfl: p.t, n: n, name: p.p, s: p.s, pos: p.pos || p.s, proj: p.proj, pts: p.pts, f: p.f || '' });
         });
       });
     });
@@ -611,6 +689,20 @@
   }
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
+  var CL = null;
+  // Exact clinch flags from tools/clinch.py; ignored if they were computed for an older week.
+  function clinchOf(i) {
+    if (!CL) return null;
+    var d = getData(); if (d.sample || !d.keys.length || CL.after_week !== Math.max.apply(null, d.keys.map(Number))) return null;
+    return CL.teams[String(i)] || null;
+  }
+  function clinchBadge(i) {
+    var c = clinchOf(i); if (!c) return null;
+    if (c.po === 'eliminated') return el('span', 'cbadge out', 'Eliminated');
+    if (c.bye === 'clinched') return el('span', 'cbadge bye', 'Bye clinched');
+    if (c.po === 'clinched') return el('span', 'cbadge in', 'Clinched');
+    return null;
+  }
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
   var LUTABS = ['table', 'matchups', 'playoffs'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
@@ -793,8 +885,9 @@
     var mx = cur.lp + 3 * left, above = 0, reach = 0;
     d.rows.forEach(function (q) { if (q.i === i) return; if (q.lp > mx) above++; if (q.lp + 3 * left >= cur.lp) reach++; });
     var status, cls;
-    if (above >= 6) { status = 'Eliminated'; cls = 'neg'; }
-    else if (reach <= 5) { status = 'Clinched'; cls = 'pos'; }
+    var cx = clinchOf(i);
+    if (above >= 6 || (cx && cx.po === 'eliminated')) { status = 'Eliminated'; cls = 'neg'; }
+    else if (reach <= 5 || (cx && cx.po === 'clinched')) { status = 'Clinched'; cls = 'pos'; }
     else if (po >= 0.8) { status = 'Favored'; cls = 'pos'; }
     else if (po >= 0.2) { status = 'Bubble'; cls = ''; }
     else { status = 'Long shot'; cls = 'neg'; }
@@ -1500,6 +1593,10 @@
       LU = d && d.weeks && Object.keys(d.weeks).length ? d.weeks : null;
       if (LUTABS.indexOf(tab) >= 0) renderCurrent();
     }).catch(function () {});
+    fetch('/api/clinch').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      CL = d && d.teams ? d : null;
+      if (CL && (tab === 'playoffs' || tab === 'table')) renderCurrent();
+    }).catch(function () {});
     fetch('/api/upcoming').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var sig = JSON.stringify(d || null);
       if (sig === upSig) return;
@@ -1743,44 +1840,56 @@
     g.fillStyle = MUTE; g.font = 'italic 500 22px ' + BODY;
     g.fillText('Through week ' + wk + '  ·  Terry’s Table', W / 2, H - 92);
   }
+  var cardIO = null;
+  function paintCard(cv) {
+    if (cv._painted) return;
+    var go = function () { cv._painted = true; drawCard(cv, cv._job.k, cv._job.wk); };
+    if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(go); else go();
+  }
   function renderCards() {
     var host = $('x-cards'); if (!host) return;
-    host.textContent = '';
     var data = null;
     try { data = cardRows(); } catch (e) { data = null; }
-    if (!data || !data.length) { host.appendChild(el('p', 'cap', 'Cards appear once real weeks are loaded.')); return; }
-    var wk = getData().keys.slice(-1)[0];
+    if (!data || !data.length) { host.textContent = ''; host._sig = ''; host.appendChild(el('p', 'cap', 'Cards appear once real weeks are loaded.')); return; }
+    var wk = getData().keys.slice(-1)[0], sig = wk + '|' + JSON.stringify(data);
+    if (host._sig === sig && host.querySelector('canvas')) return;
+    host._sig = sig; host.textContent = '';
     host.appendChild(el('p', 'cap keep', 'One card per manager. Download saves a PNG for the group chat. Share opens your share sheet where the browser supports it.'));
     var canShare = false;
     try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob([''], { type: 'image/png' })], 'c.png', { type: 'image/png' })] })); } catch (e) { canShare = false; }
-    var grid = el('div', 'cards-grid'), jobs = [];
+    if (cardIO) cardIO.disconnect();
+    cardIO = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { cardIO.unobserve(e.target); paintCard(e.target); } });
+    }, { rootMargin: '300px 0px' }) : null;
+    var grid = el('div', 'cards-grid');
     data.forEach(function (k) {
       var box = el('div', 'bcard');
       var cv = document.createElement('canvas');
-      cv.width = CW; cv.height = CH; cv.className = 'bcard-cv';
+      cv.width = CW; cv.height = CH; cv.className = 'bcard-cv'; cv._job = { k: k, wk: wk };
       cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', k.mgr + ' baseball card');
-      drawCard(cv, k, wk); jobs.push({ cv: cv, k: k, wk: wk });
       box.appendChild(cv);
+      if (cardIO) cardIO.observe(cv); else paintCard(cv);
       var name = 'terrystable-' + k.mgr.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-wk' + wk + '.png';
+      function blob(cb) { if (!cv._painted) { cv._painted = true; drawCard(cv, k, wk); } cv.toBlob(cb, 'image/png'); }
       var btns = el('div', 'bcard-btns');
       var dl = el('button', 'btn', 'Download PNG'); dl.type = 'button';
       dl.addEventListener('click', function () {
-        cv.toBlob(function (b) {
+        blob(function (b) {
           if (!b) return;
           var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
           document.body.appendChild(a); a.click();
           setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-        }, 'image/png');
+        });
       });
       btns.appendChild(dl);
       if (canShare) {
         var sh = el('button', 'btn', 'Share'); sh.type = 'button';
         sh.addEventListener('click', function () {
-          cv.toBlob(function (b) {
+          blob(function (b) {
             if (!b) return;
             var f = new File([b], name, { type: 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: k.mgr }).catch(function () {});
-          }, 'image/png');
+          });
         });
         btns.appendChild(sh);
       }
@@ -1788,7 +1897,6 @@
       grid.appendChild(box);
     });
     host.appendChild(grid);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { jobs.forEach(function (j) { drawCard(j.cv, j.k, j.wk); }); });
   }
   // ---- Ticker ----
   var tickSig = '';
@@ -1826,7 +1934,7 @@
     table: function () { renderTable(); renderHighlights(); },
     races: renderRaces,
     playoffs: function () { renderPlayoffs(); renderPower(); },
-    matchups: function () { renderMatchups(); renderRecap(); renderPlayers(); },
+    matchups: function () { renderNext(); renderMatchups(); renderTotw(); renderRecap(); renderPlayers(); },
     alltime: function () { renderAlltime(); renderProfiles(); renderCards(); renderSeasons(); renderRecords(); }
   };
 
@@ -1840,6 +1948,16 @@
       var b = el('button', 'info', 'i'); b.type = 'button'; b.setAttribute('aria-label', 'More info'); b.setAttribute('aria-expanded', 'false');
       b.addEventListener('click', function () { var on = p.classList.toggle('show'); b.setAttribute('aria-expanded', String(on)); });
       p.parentNode.insertBefore(b, p);
+    });
+  }
+  // Give every picker and slider an accessible name, from the visible label next to it when there is one.
+  function labelFields() {
+    document.querySelectorAll('main select:not([aria-label]), main input:not([aria-label])').forEach(function (f) {
+      var p = f.previousElementSibling;
+      if (p && p.tagName === 'LABEL' && p.textContent.trim()) { f.setAttribute('aria-label', p.textContent.trim()); return; }
+      if (f.type === 'range') { f.setAttribute('aria-label', f.id === 'rslide' ? 'Timeline' : 'Slider'); return; }
+      var o = f.options && f.options[0] ? f.options[0].textContent : '';
+      f.setAttribute('aria-label', /^Week/.test(o) ? 'Week' : (/^\d{4}$/.test(o) ? 'Season' : (/season/i.test(o) ? 'Seasons' : 'Choose')));
     });
   }
   function collapsify() {
@@ -1877,7 +1995,7 @@
     new MutationObserver(function () {
       if (csecBusy || csecQueued) return;
       csecQueued = true;
-      requestAnimationFrame(function () { csecQueued = false; collapsify(); infoify(); });
+      requestAnimationFrame(function () { csecQueued = false; collapsify(); infoify(); labelFields(); });
     }).observe(m, { childList: true, subtree: true });
   })();
 

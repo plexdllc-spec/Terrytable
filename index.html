@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Terry's Table</title>
 <meta name="theme-color" content="#12060a">
+<meta name="description" content="Standings, playoff odds, races and manager cards for the Dean Association fantasy league.">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/assets/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Terry's Table">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Terry's Table">
+<meta property="og:title" content="Terry's Table">
+<meta property="og:description" content="Standings, playoff odds, races and manager cards for the Dean Association.">
+<meta property="og:url" content="https://terrys-table.onrender.com/">
+<meta property="og:image" content="https://terrys-table.onrender.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800&family=Barlow:wght@400;500;600&display=swap">
@@ -104,11 +119,19 @@
 
 
     <section id="p-matchups" hidden>
-      <div class="chips" id="mchips" role="group" aria-label="Week"></div>
-      <div class="meta" id="mmeta" style="margin-top:10px"></div>
       <div class="ablock">
-        <div class="ph" data-open="1">Scores</div>
+        <div class="ph" data-open="1">Up next</div>
+        <div id="x-next"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Scores</div>
+        <div class="chips" id="mchips" role="group" aria-label="Week"></div>
+        <div class="meta" id="mmeta" style="margin-top:10px"></div>
         <div class="bugs" id="bugs"></div>
+      </div>
+      <div class="ablock">
+        <div class="ph">Team of the week</div>
+        <div id="x-totw"></div>
       </div>
       <div class="ablock">
         <div class="ph">Weekly recap</div>
