@@ -4,7 +4,7 @@
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
-  var spotWeek = null, mWeek = null, lastD = null;
+  var mWeek = null, lastD = null;
   var introUntil = 0, introGo = false;
   var ANIM = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var $ = function (id) { return document.getElementById(id); };
@@ -150,8 +150,46 @@
   function signed(x, f) { return (x > 0 ? '+' : '') + f(x); }
   function fmtInt(x) { return String(Math.round(x)); }
 
+  // ---- Sortable tables: click or press Enter on any header to sort ----
+  function sortKey(td) {
+    var t = (td ? td.textContent : '').trim().replace(/[,%$\s]/g, '').replace(/\u2212/g, '-');
+    if (t === '' || t === '\u2014') return null;
+    return /^[+-]?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : undefined;
+  }
+  function sortTable(tbl, c, th) {
+    var prev = tbl._sort && tbl._sort.c === c ? tbl._sort.dir : null;
+    var rows = Array.prototype.slice.call(tbl.rows, 1);
+    var nums = rows.filter(function (r) { var k = sortKey(r.cells[c]); return typeof k === 'number'; }).length;
+    var isNum = nums > 0 && nums >= rows.length / 2;
+    var dir = prev === null ? (isNum ? 'desc' : 'asc') : (prev === 'desc' ? 'asc' : 'desc');
+    var sign = dir === 'desc' ? -1 : 1;
+    rows.sort(function (a, b) {
+      var ka = sortKey(a.cells[c]), kb = sortKey(b.cells[c]);
+      if (isNum) {
+        if (ka === null || ka === undefined) return (kb === null || kb === undefined) ? 0 : 1;
+        if (kb === null || kb === undefined) return -1;
+        return sign * (ka - kb);
+      }
+      return sign * a.cells[c].textContent.trim().localeCompare(b.cells[c].textContent.trim(), undefined, { numeric: true });
+    });
+    rows.forEach(function (r) { tbl.appendChild(r); });
+    tbl._sort = { c: c, dir: dir };
+    Array.prototype.forEach.call(tbl.rows[0].cells, function (h) { h.removeAttribute('aria-sort'); h.classList.remove('sorted-asc', 'sorted-desc'); });
+    th.setAttribute('aria-sort', dir === 'desc' ? 'descending' : 'ascending');
+    th.classList.add(dir === 'desc' ? 'sorted-desc' : 'sorted-asc');
+  }
+  function makeSortable(tbl) {
+    var hr = tbl.rows[0]; if (!hr || tbl._sortable) return;
+    tbl._sortable = true;
+    Array.prototype.forEach.call(hr.cells, function (th, c) {
+      th.classList.add('sortable'); th.tabIndex = 0;
+      var go = function () { sortTable(tbl, c, th); };
+      th.addEventListener('click', go);
+      th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+  }
   function fill(tbl, heads, rows) {
-    tbl.textContent = '';
+    tbl.textContent = ''; tbl._sortable = false; tbl._sort = null;
     var hr = el('tr');
     heads.forEach(function (h) { hr.appendChild(el('th', h[1], h[0])); });
     tbl.appendChild(hr);
@@ -160,6 +198,7 @@
       cells.forEach(function (c) { tr.appendChild(el('td', c[1], c[0])); });
       tbl.appendChild(tr);
     });
+    makeSortable(tbl);
   }
 
   // ---- Motion helpers ----
@@ -247,20 +286,9 @@
       return { team: r.team, lp: r.lp, n: cmp.length, po: cmp.length ? po / cmp.length : null, by: cmp.length ? by / cmp.length : null };
     });
   }
-  function renderPbase(d, upTo) {
-    var host = $('pbase'); host.textContent = '';
-    if (upTo || d.sample || !d.keys.length) return;
-    if (!HW) { loadHW(function () { if (tab === 'table') renderPbase(getData(), false); }); return; }
-    var kk = d.keys.length, rows = pbaseRows(kk, d);
-    if (!rows) return;
-    sec(host, 'Playoff odds from history, after Week ' + kk, true);
-    barList(host, rows.map(function (r) { return { t: r.team, sub: r.lp + ' LP', v: r.po === null ? 0 : r.po * 100, txt: r.po === null ? 'n/a' : Math.round(r.po * 100) + '%', cls: r.po >= 0.75 ? 'pos' : (r.po !== null && r.po <= 0.25 ? 'neg' : '') }; }),
-      { max: 100, sorts: [['By LP', function (x, y) { return parseInt(y.sub, 10) - parseInt(x.sub, 10) || y.v - x.v; }], ['By odds', function (x, y) { return y.v - x.v; }]] });
-  }
   function renderTable(upTo) {
     var d = getData(upTo), rows = d.rows, keys = d.keys;
     lastD = d;
-    renderPbase(d, upTo);
     var snap = snapshot(), first = !entered;
     var smn = Infinity, smx = -Infinity;
     rows.forEach(function (r) { keys.forEach(function (n) { smn = Math.min(smn, r.wk[n].pts); smx = Math.max(smx, r.wk[n].pts); }); });
@@ -273,9 +301,9 @@
 
     var t = $('t');
     t.className = showWeeks ? 'show' : '';
-    t.textContent = '';
+    t.textContent = ''; t._sortable = false; t._sort = null;
     var hr = el('tr');
-    var heads = [['Rank', 'c1'], ['Team', 'l c2'], ['League Pts', ''], ['Fantasy Pts', ''], ['Form', ''], ['W', ''], ['L', ''], ['Wks Above Avg', ''], ['Wks Below Avg', ''], ['Top Scorer Wks', '']];
+    var heads = [['Rank', 'c1'], ['Team', 'l c2'], ['League Pts', ''], ['Fantasy Pts', ''], ['Form', ''], ['W', ''], ['L', ''], ['Wks Above Avg', ''], ['Top Scorer Wks', '']];
     heads.forEach(function (h) { hr.appendChild(el('th', h[1], h[0])); });
     keys.forEach(function (n) {
       hr.appendChild(el('th', 'wk', 'Wk ' + n + ' Pts'));
@@ -301,7 +329,6 @@
       tr.appendChild(el('td', '', String(r.w) + (r.t ? '+' + r.t + 'T' : '')));
       tr.appendChild(el('td', '', String(r.l)));
       tr.appendChild(el('td', '', String(r.above)));
-      tr.appendChild(el('td', '', String(r.below)));
       tr.appendChild(el('td', '', String(r.tops)));
       keys.forEach(function (n) {
         var x = r.wk[n];
@@ -336,39 +363,9 @@
       c.appendChild(body);
       cards.appendChild(c);
     });
-    renderSpot(d, !upTo ? false : true, upTo);
     motion(snap, first);
+    makeSortable(t);
     if (loaded) entered = true;
-  }
-
-  // Lower third: weekly top scorer
-  function renderSpot(d, replay, upTo) {
-    var box = $('l3');
-    if (d.sample) { box.hidden = true; return; }
-    var keys = d.keys, rows = d.rows;
-    var wk = (upTo || spotWeek === null || keys.indexOf(spotWeek) < 0) ? keys[keys.length - 1] : spotWeek;
-    var tops = rows.filter(function (r) { return r.wk[wk] && r.wk[wk].top; });
-    var changing = box.getAttribute('data-wk') !== String(wk);
-    box.setAttribute('data-wk', String(wk));
-    box.hidden = false;
-    box.textContent = '';
-    box.appendChild(el('div', 'l3-tag', 'Top scorer, week ' + wk));
-    var main = el('div');
-    main.appendChild(el('div', 'l3-team', tops.map(function (r) { return r.team; }).join(' and ')));
-    main.appendChild(el('div', 'l3-sub', tops.length > 1 ? 'Tied for the weekly $50 prize' : 'Wins the weekly $50 prize'));
-    box.appendChild(main);
-    var sc = el('div', 'l3-score'); setNum(sc, 'spot', tops[0].wk[wk].pts, f2); box.appendChild(sc);
-    if (!upTo) {
-      var chips = el('div', 'chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'Week');
-      keys.forEach(function (n) {
-        var b = el('button', 'chip', 'Wk ' + n); b.type = 'button';
-        b.setAttribute('aria-pressed', String(n === wk));
-        b.addEventListener('click', function () { spotWeek = n; renderSpot(lastD, false); });
-        chips.appendChild(b);
-      });
-      box.appendChild(chips);
-    }
-    if (changing && ANIM) { box.classList.remove('play'); void box.offsetWidth; box.classList.add('play'); }
   }
 
   // ---- Playoff picture ----
@@ -1700,48 +1697,72 @@
       };
     });
   }
+  function rrect(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+    g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
+  function spaced(g, text, x, yy, px) {
+    if ('letterSpacing' in g) { g.letterSpacing = px + 'px'; g.fillText(text, x, yy); g.letterSpacing = '0px'; }
+    else g.fillText(text, x, yy);
+  }
   function drawCard(cv, k, wk) {
-    var g = cv.getContext('2d'), INK = '#2a1b12', CREAM = '#f4ebd3', RED = '#9c2b20', MUTE = '#6b5844';
+    var g = cv.getContext('2d'), W = CW, H = CH;
+    var INK = '#1d1410', PAPER = '#f6eedc', CREAM = '#fbf5e6', RED = '#a3271c', GOLD = '#c8962c', GOLDL = '#f4d983', MUTE = '#7a6450';
+    var DISP = '"Barlow Condensed", "Arial Narrow", Impact, sans-serif', BODY = 'Barlow, system-ui, sans-serif';
+    var tier = k.rank <= 2 ? ['#f9de8f', '#c08a1e', '#3a2506'] : (k.rank <= 6 ? ['#d24b68', '#7a1a33', '#fff4f6'] : ['#8d80a0', '#3b3247', '#f5f1f8']);
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = CREAM; g.fillRect(0, 0, CW, CH);
-    g.fillStyle = 'rgba(120,90,50,0.06)';
-    for (var s = 0; s < 600; s++) g.fillRect((s * 97) % CW, (s * 151) % CH, 2, 2);
-    g.strokeStyle = INK; g.lineWidth = 16; g.strokeRect(24, 24, CW - 48, CH - 48);
-    g.lineWidth = 3; g.strokeRect(50, 50, CW - 100, CH - 100);
-    g.fillStyle = RED; g.fillRect(70, 70, CW - 140, 78);
-    g.fillStyle = CREAM; g.font = 'bold 30px Georgia, "Times New Roman", serif';
-    g.fillText('THE DEAN ASSOCIATION  ·  2026', CW / 2, 110);
-    g.fillStyle = INK; g.font = 'bold 84px Impact, "Arial Narrow", "Arial Black", sans-serif';
-    fitText(g, k.mgr.toUpperCase(), CW / 2, 226, CW - 160);
-    g.fillStyle = MUTE; g.font = 'italic 32px Georgia, "Times New Roman", serif';
-    fitText(g, k.team, CW / 2, 272, CW - 160);
-    var fx = 150, fy = 300, fw = CW - 300, fh = 300;
-    var gr = g.createLinearGradient(0, fy, 0, fy + fh); gr.addColorStop(0, '#d8c79c'); gr.addColorStop(1, '#a8906a');
-    g.fillStyle = gr; g.fillRect(fx, fy, fw, fh);
-    g.strokeStyle = INK; g.lineWidth = 6; g.strokeRect(fx, fy, fw, fh);
-    g.fillStyle = CREAM; g.font = 'bold 200px Georgia, "Times New Roman", serif';
-    g.fillText(initials(k.mgr), CW / 2, fy + fh / 2 + 10);
-    g.fillStyle = INK; g.font = 'bold 26px Georgia, "Times New Roman", serif';
-    fitText(g, k.star ? 'SIGNATURE: ' + k.star.name.toUpperCase() + '  ·  ' + f1(k.star.pts) + ' PTS' : 'SIGNATURE: —', CW / 2, 636, CW - 160);
-    var cells = [
-      ['RECORD', k.w + '-' + k.l], ['LEAGUE PTS', String(k.lp)],
-      ['RANK', '#' + k.rank], ['POINTS FOR', f1(k.pf)],
-      ['BEST WEEK', k.best ? f1(k.best.pts) + '  (WK ' + k.best.wk + ')' : '—'], ['PLAYOFF ODDS', k.odds !== null ? Math.round(k.odds * 100) + '%' : '—'],
-      ['TITLES', String(k.titles)], ['CAREER W%', k.career !== null ? (k.career * 100).toFixed(1) + '%' : '—']
-    ];
-    var x0 = 110, colW = (CW - 220) / 2, y0 = 664, rowH = 74;
-    cells.forEach(function (c, idx) {
-      var col = idx % 2, row = Math.floor(idx / 2);
-      var cx = x0 + colW * col + colW / 2, cy = y0 + rowH * row;
-      g.fillStyle = MUTE; g.font = 'bold 20px Georgia, "Times New Roman", serif';
-      g.fillText(c[0], cx, cy + 8);
-      g.fillStyle = INK; g.font = 'bold 42px Impact, "Arial Narrow", sans-serif';
-      fitText(g, c[1], cx, cy + 46, colW - 20);
+    g.clearRect(0, 0, W, H);
+    // paper and gold foil edge
+    g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
+    var fg = g.createLinearGradient(0, 0, W, H); fg.addColorStop(0, GOLDL); fg.addColorStop(0.5, GOLD); fg.addColorStop(1, GOLDL);
+    g.fillStyle = fg; rrect(g, 14, 14, W - 28, H - 28, 30); g.fill();
+    g.fillStyle = PAPER; rrect(g, 32, 32, W - 64, H - 64, 22); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 2; rrect(g, 46, 46, W - 92, H - 92, 14); g.stroke();
+    // header
+    g.fillStyle = RED; g.font = '600 22px ' + DISP; spaced(g, 'THE DEAN ASSOCIATION  ·  2026 SEASON', W / 2, 92, 3);
+    g.strokeStyle = GOLD; g.lineWidth = 2; g.beginPath(); g.moveTo(96, 118); g.lineTo(W - 96, 118); g.stroke();
+    // name plate
+    g.fillStyle = INK; g.font = '700 110px ' + DISP; fitText(g, k.mgr.toUpperCase(), W / 2, 206, W - 170);
+    g.fillStyle = MUTE; g.font = 'italic 500 32px ' + BODY; fitText(g, k.team, W / 2, 256, W - 170);
+    // hero panel
+    var px = 96, py = 288, pw = W - 192, ph = 340;
+    var hg = g.createLinearGradient(0, py, 0, py + ph); hg.addColorStop(0, tier[0]); hg.addColorStop(1, tier[1]);
+    g.save(); rrect(g, px, py, pw, ph, 18); g.clip();
+    g.fillStyle = hg; g.fillRect(px, py, pw, ph);
+    g.strokeStyle = 'rgba(255,255,255,0.10)'; g.lineWidth = 14;
+    for (var sx = -ph; sx < pw + ph; sx += 46) { g.beginPath(); g.moveTo(px + sx, py + ph); g.lineTo(px + sx + ph, py); g.stroke(); }
+    g.restore();
+    g.fillStyle = tier[2]; g.font = '700 240px ' + DISP; g.globalAlpha = 0.92;
+    g.fillText(initials(k.mgr), W / 2, py + ph / 2 + 12); g.globalAlpha = 1;
+    // rank badge
+    g.fillStyle = INK; g.beginPath(); g.arc(px + pw - 62, py + 62, 50, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = GOLD; g.lineWidth = 4; g.stroke();
+    g.fillStyle = CREAM; g.font = '700 54px ' + DISP; g.fillText('#' + k.rank, px + pw - 62, py + 66);
+    // signature banner
+    g.fillStyle = INK; rrect(g, px, 648, pw, 52, 12); g.fill();
+    g.fillStyle = GOLDL; g.font = '600 22px ' + DISP; spaced(g, 'STAR', px + 56, 674, 3);
+    g.fillStyle = CREAM; g.font = '600 30px ' + DISP;
+    fitText(g, k.star ? k.star.name.toUpperCase() + '   ' + f1(k.star.pts) + ' PTS' : 'NO STAR YET', W / 2 + 40, 675, pw - 200);
+    // headline stats
+    var heads = [['LEAGUE PTS', String(k.lp)], ['RECORD', k.w + '-' + k.l], ['PLAYOFF ODDS', k.odds !== null ? Math.round(k.odds * 100) + '%' : '—']];
+    var cw = pw / 3;
+    heads.forEach(function (c, i) {
+      var cx = px + cw * i + cw / 2;
+      g.fillStyle = MUTE; g.font = '600 22px ' + DISP; spaced(g, c[0], cx, 736, 3);
+      g.fillStyle = INK; g.font = '700 86px ' + DISP; fitText(g, c[1], cx, 800, cw - 16);
     });
-    g.strokeStyle = 'rgba(42,27,18,0.35)'; g.lineWidth = 2;
-    for (var rr = 1; rr < 4; rr++) { g.beginPath(); g.moveTo(110, y0 + rowH * rr - 5); g.lineTo(CW - 110, y0 + rowH * rr - 5); g.stroke(); }
-    g.fillStyle = MUTE; g.font = 'italic 22px Georgia, "Times New Roman", serif';
-    g.fillText('Through week ' + wk + '  ·  Terry’s Table', CW / 2, CH - 66);
+    g.strokeStyle = 'rgba(29,20,16,0.25)'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, 846); g.lineTo(px + pw, 846); g.stroke();
+    // secondary stats
+    var secStats = [['PTS FOR', f1(k.pf)], ['BEST WK', k.best ? f1(k.best.pts) : '—'], ['TITLES', String(k.titles)], ['CAREER W%', k.career !== null ? (k.career * 100).toFixed(1) + '%' : '—']];
+    var sw = pw / 4;
+    secStats.forEach(function (c, i) {
+      var cx = px + sw * i + sw / 2;
+      g.fillStyle = MUTE; g.font = '600 19px ' + DISP; spaced(g, c[0], cx, 878, 2);
+      g.fillStyle = INK; g.font = '700 44px ' + DISP; fitText(g, c[1], cx, 920, sw - 12);
+    });
+    g.fillStyle = MUTE; g.font = 'italic 500 22px ' + BODY;
+    g.fillText('Through week ' + wk + '  ·  Terry’s Table', W / 2, H - 92);
   }
   function renderCards() {
     var host = $('x-cards'); if (!host) return;
@@ -1753,13 +1774,13 @@
     host.appendChild(el('p', 'cap keep', 'One card per manager. Download saves a PNG for the group chat. Share opens your share sheet where the browser supports it.'));
     var canShare = false;
     try { canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob([''], { type: 'image/png' })], 'c.png', { type: 'image/png' })] })); } catch (e) { canShare = false; }
-    var grid = el('div', 'cards-grid');
+    var grid = el('div', 'cards-grid'), jobs = [];
     data.forEach(function (k) {
       var box = el('div', 'bcard');
       var cv = document.createElement('canvas');
       cv.width = CW; cv.height = CH; cv.className = 'bcard-cv';
       cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', k.mgr + ' baseball card');
-      drawCard(cv, k, wk);
+      drawCard(cv, k, wk); jobs.push({ cv: cv, k: k, wk: wk });
       box.appendChild(cv);
       var name = 'terrystable-' + k.mgr.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-wk' + wk + '.png';
       var btns = el('div', 'bcard-btns');
@@ -1788,6 +1809,7 @@
       grid.appendChild(box);
     });
     host.appendChild(grid);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { jobs.forEach(function (j) { drawCard(j.cv, j.k, j.wk); }); });
   }
   function heatColor(t) {
     var stops = [[58, 18, 32], [207, 44, 91], [242, 182, 50]], k = t < 0.5 ? 0 : 1, u = t < 0.5 ? t * 2 : (t - 0.5) * 2;

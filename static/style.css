@@ -489,3 +489,8 @@
   .dl-gap { text-align: center; font-weight: 700; color: var(--gold-soft); min-height: 1.3em; }
   .dl-tally, .dl-last { color: var(--muted); font-size: .92rem; margin-top: 6px; text-align: center; }
 @media (max-width: 760px) { #subnav { padding-right: 28px; -webkit-mask-image: linear-gradient(to right, #000 86%, transparent); mask-image: linear-gradient(to right, #000 86%, transparent); } }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable::after { content: ' \2195'; opacity: .35; font-size: .85em; }
+  th.sorted-asc::after { content: ' \25B2'; opacity: 1; }
+  th.sorted-desc::after { content: ' \25BC'; opacity: 1; }
+  th.sortable:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
