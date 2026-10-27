@@ -68,7 +68,6 @@
     <button role="tab" id="tab-table" aria-selected="true" data-tab="table">Standings</button>
     <button role="tab" id="tab-races" aria-selected="false" data-tab="races">Races</button>
     <button role="tab" id="tab-playoffs" aria-selected="false" data-tab="playoffs">Playoff picture</button>
-    <button role="tab" id="tab-analytics" aria-selected="false" data-tab="analytics">Analytics</button>
     <button role="tab" id="tab-matchups" aria-selected="false" data-tab="matchups">Matchups</button>
     <button role="tab" id="tab-alltime" aria-selected="false" data-tab="alltime">All-time</button>
   </nav>
@@ -103,25 +102,6 @@
       </div>
     </section>
 
-    <section id="p-analytics" hidden>
-      <div class="meta" id="ameta"></div>
-      <div class="ablock">
-        <div class="ph">Weekly scoring heatmap</div>
-        <p class="cap">Points scored each week. Brighter means higher. A white ring marks the week's top score, and W or L shows the result.</p>
-        <div class="scroll pad"><div id="x-heat"></div></div>
-      </div>
-      <div class="ablock">
-        <div class="ph">Team radar and head-to-head</div>
-        <p class="cap">Six measures scaled against the rest of the league, where the outer edge is best. Compare any two teams, or one team against the league average.</p>
-        <div id="x-radar"></div>
-      </div>
-      <div class="ablock">
-        <div class="ph">Luck</div>
-        <div class="meta" id="lmeta"></div>
-        <p class="cap">All-play is your score against all 11 other teams each week. Expected wins is your all-play win rate times the weeks played. Luck is real wins minus expected wins: positive means the schedule helped you, negative means it hurt.</p>
-        <div class="scroll"><table id="tl"></table></div>
-      </div>
-    </section>
 
     <section id="p-matchups" hidden>
       <div class="chips" id="mchips" role="group" aria-label="Week"></div>

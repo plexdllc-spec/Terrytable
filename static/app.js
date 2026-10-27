@@ -1,6 +1,6 @@
 (function () {
   var WEEKS = 14, N = 12;
-  var TABS = ['table', 'races', 'playoffs', 'analytics', 'matchups', 'alltime'];
+  var TABS = ['table', 'races', 'playoffs', 'matchups', 'alltime'];
   var state = { teams: [], weeks: {} };
   var tab = 'table', showWeeks = false, selTeam = null;
   var stateSig = '', loaded = false, loadFailed = false, entered = false, replaying = false;
@@ -447,23 +447,6 @@
     });
   }
 
-  // ---- Luck ----
-  function renderLuck() {
-    var d = getData(), rows = analyze(d).slice();
-    rows.sort(function (a, b) { return (b.apPct - a.apPct) || (b.pts - a.pts); });
-    $('lmeta').textContent = (d.sample ? 'Example data. ' : '') + 'Weeks counted: ' + d.keys.join(', ') + '. Sorted by all-play win rate.';
-    fill($('tl'),
-      [['#', 'c1'], ['Team', 'l c2'], ['Record', ''], ['All-Play', ''], ['All-Play %', ''], ['Exp Wins', ''], ['Luck', '']],
-      rows.map(function (r, k) {
-        return [[String(k + 1), 'c1'], [r.team, 'l c2 team'],
-          [r.w + '-' + r.l + (r.t ? '-' + r.t : ''), ''],
-          [half(r.apw) + '-' + half(r.apl), ''],
-          [(r.apPct * 100).toFixed(0) + '%', ''],
-          [f1(r.exp), ''],
-          [signed(r.luck, f1), Math.abs(r.luck) < 0.05 ? '' : (r.luck > 0 ? 'pos' : 'neg')]];
-      }));
-  }
-
   // ---- SVG helpers ----
   var NS = 'http://www.w3.org/2000/svg';
   function sv(tag, attrs, text) {
@@ -629,7 +612,7 @@
 
   // ---- Outlook, odds, power (starters only; next week and schedule from /api/upcoming) ----
   var UP = null, OUT = null, REPL = 10, pSel = null, upSig = '';
-  var LUTABS = ['table', 'matchups', 'analytics', 'playoffs'];
+  var LUTABS = ['table', 'matchups', 'playoffs'];
   function mean(a) { var s = 0; a.forEach(function (v) { s += v; }); return a.length ? s / a.length : 0; }
   function f0(x) { return x.toFixed(0); }
   function phi(z) {
@@ -1540,7 +1523,7 @@
   }
   setInterval(showAsof, 60000);
 
-  // ---- Analytics: rank race, heatmap, radar ----
+  // ---- Rank history for the rank race ----
   function rankHistory(d) {
     var hist = {};
     d.rows.forEach(function (r) { hist[r.i] = []; });
@@ -1807,151 +1790,6 @@
     host.appendChild(grid);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { jobs.forEach(function (j) { drawCard(j.cv, j.k, j.wk); }); });
   }
-  function heatColor(t) {
-    var stops = [[58, 18, 32], [207, 44, 91], [242, 182, 50]], k = t < 0.5 ? 0 : 1, u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
-    return 'rgb(' + [0, 1, 2].map(function (c) { return Math.round(stops[k][c] + (stops[k + 1][c] - stops[k][c]) * u); }).join(',') + ')';
-  }
-  function renderHeat(host, d) {
-    host.textContent = '';
-    var rows = d.rows, keys = d.keys, mn = Infinity, mx = -Infinity;
-    rows.forEach(function (r) { keys.forEach(function (n) { mn = Math.min(mn, r.wk[n].pts); mx = Math.max(mx, r.wk[n].pts); }); });
-    var span = (mx - mn) || 1;
-    var grid = el('div', 'heat');
-    grid.style.gridTemplateColumns = 'minmax(140px, 210px) repeat(' + keys.length + ', minmax(54px, 1fr)) minmax(66px, .9fr)';
-    grid.appendChild(el('div', 'hh', ''));
-    keys.forEach(function (n) { grid.appendChild(el('div', 'hh', 'Wk ' + n)); });
-    grid.appendChild(el('div', 'hh', 'Avg'));
-    function paint(c, t, delay) {
-      c.style.background = heatColor(t);
-      c.style.color = t > 0.62 ? '#2a0a14' : '#fbf4e6';
-      c.style.setProperty('--d', delay.toFixed(2) + 's');
-    }
-    rows.forEach(function (r, ri) {
-      var nm = el('div', 'hn'); nm.appendChild(el('i', '', String(r.rank))); nm.appendChild(el('span', '', r.team));
-      grid.appendChild(nm);
-      keys.forEach(function (n, ci) {
-        var x = r.wk[n], c = el('div', 'hc' + (x.top ? ' hit' : ''), f1(x.pts));
-        c.setAttribute('data-res', x.res);
-        c.title = r.team + ', week ' + n + ': ' + f2(x.pts) + ' to ' + f2(x.opp) + ' (' + x.res + '), ' + x.lp + ' League Pts, league average ' + f2(x.avg);
-        paint(c, (x.pts - mn) / span, ri * 0.045 + ci * 0.09);
-        grid.appendChild(c);
-      });
-      var av = el('div', 'hc avg', f1(r.pts / keys.length));
-      av.title = r.team + ' average ' + f2(r.pts / keys.length);
-      paint(av, (r.pts / keys.length - mn) / span, ri * 0.045 + keys.length * 0.09);
-      grid.appendChild(av);
-    });
-    host.appendChild(grid);
-    var lg = el('div', 'hlegend');
-    lg.appendChild(el('span', '', f1(mn)));
-    lg.appendChild(el('span', 'hbar'));
-    lg.appendChild(el('span', '', f1(mx) + ' points'));
-    host.appendChild(lg);
-    if (ANIM) { grid.classList.add('pre'); onView(grid, function () { grid.classList.remove('pre'); grid.classList.add('build'); }); }
-  }
-
-  var RAX = [
-    { label: 'Scoring', get: function (r) { return r.avg; }, show: function (r) { return f1(r.avg); } },
-    { label: 'Peak week', get: function (r) { return r.hi; }, show: function (r) { return f1(r.hi); } },
-    { label: 'Floor week', get: function (r) { return r.lo; }, show: function (r) { return f1(r.lo); } },
-    { label: 'Steadiness', get: function (r) { return -r.sd; }, show: function (r) { return f1(r.sd) + ' spread'; } },
-    { label: 'All-play', get: function (r) { return r.apPct; }, show: function (r) { return (r.apPct * 100).toFixed(0) + '%'; } },
-    { label: 'Schedule luck', get: function (r) { return r.luck; }, show: function (r) { return signed(r.luck, f1); }, neutral: true }
-  ];
-  var radA = null, radB = 'avg';
-  function renderRadar(host, d) {
-    host.textContent = '';
-    var rows = analyze(d), NA = RAX.length, byI = {};
-    rows.forEach(function (r) { byI[r.i] = r; });
-    if (radA === null || !byI[radA]) radA = rows[0].i;
-    if (radB !== 'avg' && !byI[radB]) radB = 'avg';
-    var mm = RAX.map(function (a) { var vs = rows.map(a.get); return [Math.min.apply(null, vs), Math.max.apply(null, vs)]; });
-    function vec(r) { return RAX.map(function (a, k) { return 0.12 + 0.88 * (a.get(r) - mm[k][0]) / ((mm[k][1] - mm[k][0]) || 1); }); }
-    var avgRow = { avg: 0, hi: 0, lo: 0, sd: 0, apPct: 0, luck: 0 };
-    Object.keys(avgRow).forEach(function (k) { rows.forEach(function (r) { avgRow[k] += r[k] / rows.length; }); });
-
-    var pick = el('div', 'pickrow');
-    function sel(label, id, withAvg, cur, onChange) {
-      var lab = el('label', '', label), s = el('select'); s.id = id;
-      if (withAvg) { var o = el('option', '', 'League average'); o.value = 'avg'; s.appendChild(o); }
-      rows.forEach(function (r) { var o = el('option', '', r.team); o.value = String(r.i); s.appendChild(o); });
-      s.value = String(cur);
-      s.addEventListener('change', function () { onChange(s.value); });
-      lab.appendChild(s); return lab;
-    }
-    pick.appendChild(sel('Team', 'rsel', false, radA, function (v) { radA = parseInt(v, 10); draw(true); }));
-    pick.appendChild(sel('Compare to', 'rsel2', true, radB, function (v) { radB = v === 'avg' ? 'avg' : parseInt(v, 10); draw(true); }));
-    host.appendChild(pick);
-    var wrap = el('div', 'radar-wrap'), left = el('div'), right = el('div');
-    wrap.appendChild(left); wrap.appendChild(right); host.appendChild(wrap);
-
-    var S = 460, C = 230, RAD = 128;
-    function pt(k, f) { var a = -Math.PI / 2 + k * 2 * Math.PI / NA; return [C + RAD * f * Math.cos(a), C + RAD * f * Math.sin(a)]; }
-    function pstr(v, t) { return v.map(function (f, k) { var q = pt(k, f * t); return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' '); }
-    var anim = 0;
-    function draw(animate) {
-      var token = ++anim;
-      left.textContent = ''; right.textContent = '';
-      var svg = sv('svg', { viewBox: '0 0 ' + S + ' ' + S, role: 'img', 'aria-label': 'Radar chart comparing teams on six measures' });
-      [0.25, 0.5, 0.75, 1].forEach(function (f) { svg.appendChild(sv('polygon', { points: pstr(RAX.map(function () { return f; }), 1), 'class': 'rad-ring' })); });
-      RAX.forEach(function (a, k) {
-        var e = pt(k, 1), lb = pt(k, 1.17), cs = Math.cos(-Math.PI / 2 + k * 2 * Math.PI / NA);
-        svg.appendChild(sv('line', { x1: C, y1: C, x2: e[0], y2: e[1], 'class': 'rad-ax' }));
-        svg.appendChild(sv('text', { x: lb[0], y: lb[1] + 4, 'text-anchor': cs > 0.3 ? 'start' : (cs < -0.3 ? 'end' : 'middle'), 'class': 'rad-lb' }, a.label));
-      });
-      var A = byI[radA], Bt = radB === 'avg' ? avgRow : byI[radB];
-      var vA = vec(A), vB = radB === 'avg' ? null : vec(Bt);
-      var vAvg = RAX.map(function (a, k) { var s2 = 0; rows.forEach(function (r) { s2 += vec(r)[k]; }); return s2 / rows.length; });
-      var pAvg = sv('polygon', { 'class': 'rad-avg' }), pB = vB ? sv('polygon', { 'class': 'rad-b' }) : null, pA = sv('polygon', { 'class': 'rad-a' });
-      svg.appendChild(pAvg); if (pB) svg.appendChild(pB); svg.appendChild(pA);
-      function setT(t) { pAvg.setAttribute('points', pstr(vAvg, t)); if (pB) pB.setAttribute('points', pstr(vB, t)); pA.setAttribute('points', pstr(vA, t)); }
-      left.appendChild(svg);
-      if (animate && ANIM) {
-        setT(0);
-        var t0 = null;
-        (function tick(ts) {
-          if (token !== anim) return;
-          if (t0 === null) t0 = ts;
-          var p = Math.min(1, (ts - t0) / 900), e = 1 - Math.pow(1 - p, 3);
-          setT(e); if (p < 1) requestAnimationFrame(tick);
-        })(performance.now());
-      } else setT(1);
-
-      var nameB = radB === 'avg' ? 'League average' : Bt.team;
-      var t = el('table'); var sc = el('div', 'scroll'); sc.appendChild(t);
-      fill(t, [['Measure', 'l'], [A.team, ''], [nameB, '']], RAX.map(function (a) {
-        var ga = a.get(A), gb = a.get(Bt), ca = '', cb = '';
-        if (!a.neutral && Math.abs(ga - gb) > 1e-9) { if (ga > gb) ca = 'pos'; else cb = 'pos'; }
-        return [[a.label, 'l team'], [a.show(A), ca], [a.show(Bt), cb]];
-      }));
-      right.appendChild(sc);
-      var h = el('p', 'h2h');
-      if (radB === 'avg') h.textContent = 'Green marks the stronger side on each measure. Schedule luck is not scored as better or worse.';
-      else {
-        var games = [];
-        d.keys.forEach(function (n) {
-          d.weeksObj[n].forEach(function (m) {
-            if ((m.a === radA && m.b === radB) || (m.a === radB && m.b === radA)) {
-              var sa = m.a === radA ? num(m.as) : num(m.bs), sb = m.a === radA ? num(m.bs) : num(m.as);
-              games.push('Week ' + n + ': ' + A.team + ' ' + f2(sa) + ', ' + Bt.team + ' ' + f2(sb));
-            }
-          });
-        });
-        h.textContent = games.length ? 'Head to head. ' + games.join('. ') + '.' : 'These two have not played each other yet.';
-      }
-      right.appendChild(h);
-    }
-    if (ANIM) onView(wrap, function () { draw(true); }); else draw(false);
-    if (ANIM) { var ph = sv('svg', { viewBox: '0 0 ' + S + ' ' + S }); left.appendChild(ph); }
-  }
-
-  function renderAnalytics() {
-    var d = getData();
-    $('ameta').textContent = (d.sample ? 'Example data. ' : '') + 'After week ' + d.keys[d.keys.length - 1] + '.';
-    renderHeat($('x-heat'), d);
-    renderRadar($('x-radar'), d);
-  }
-
   // ---- Ticker ----
   var tickSig = '';
   function updateTicker() {
@@ -1988,7 +1826,6 @@
     table: function () { renderTable(); renderHighlights(); },
     races: renderRaces,
     playoffs: function () { renderPlayoffs(); renderPower(); },
-    analytics: function () { renderAnalytics(); renderLuck(); },
     matchups: function () { renderMatchups(); renderRecap(); renderPlayers(); },
     alltime: function () { renderAlltime(); renderProfiles(); renderCards(); renderSeasons(); renderRecords(); }
   };
@@ -2287,7 +2124,7 @@
 
   function renderCurrent() { if (!replaying) RENDER[tab](); if (loaded && !replaying) updateTicker(); }
   var GROUPS = [
-    ['standings', ['table', 'races', 'playoffs', 'analytics']],
+    ['standings', ['table', 'races', 'playoffs']],
     ['week', ['matchups']],
     ['history', ['alltime']]
   ];

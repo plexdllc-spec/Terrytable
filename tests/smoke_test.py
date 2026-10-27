@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8099"
 EXPECTED_GROUPS = ["Standings", "This Week", "History"]
 EXPECTED_TABS = {
-    "standings": ["table", "races", "playoffs", "analytics"],
+    "standings": ["table", "races", "playoffs"],
     "week": ["matchups"],
     "history": ["alltime"],
 }
