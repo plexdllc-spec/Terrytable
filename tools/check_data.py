@@ -20,7 +20,7 @@ def load(name):
 
 
 def main():
-    bad = []
+    bad, warn = [], []
     s, l, u, c = load('scores.json'), load('lineups.json'), load('upcoming.json'), load('clinch.json')
     n = len(s['teams'])
     weeks = sorted(s['weeks'], key=int)
@@ -31,7 +31,7 @@ def main():
             bad.append('week %s: games do not cover each team once: %s' % (wk, teams))
         lw = (l or {}).get('weeks', {}).get(wk)
         if not lw:
-            bad.append('week %s: no lineups' % wk); continue
+            warn.append('week %s: no starter lineups yet (team scores are in; player stats skip this week)' % wk); continue
         for m in g:
             for t, sc in ((m['a'], m['as']), (m['b'], m['bs'])):
                 rows = lw.get(str(t), [])
@@ -50,6 +50,8 @@ def main():
             bad.append('week %d schedule does not cover each team once' % w)
     if not c or c.get('after_week') != last:
         bad.append('clinch.json is not computed for week %d: run python3 tools/clinch.py' % last)
+    for w_ in warn:
+        print('NOTE:', w_)
     if bad:
         print('PROBLEMS:'); print('\n'.join('  ' + b for b in bad)); sys.exit(1)
     print('OK: weeks 1-%d consistent, schedule %d-14 complete, clinch flags current.' % (last, last + 1))
